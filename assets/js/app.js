@@ -465,6 +465,7 @@ async function listing(view, r, alive) {
           ${l.floor != null ? `<div>${icon('building', 20)}<span>${t('detail.floor', { n: l.floor })}</span></div>` : ''}
           ${l.created_at ? `<div>${icon('calendar', 20)}<span>${t('detail.posted', { d: i18n.date(l.created_at) })}</span></div>` : ''}
         </div>
+        <section class="price-insight"><h2>QULAYJOY narx tahlili</h2><p class="muted small">Shu hudud va shu turdagi mavjud e’lonlar bilan solishtirish</p><b>${(()=>{const peers=all.filter(x=>x.id!==l.id&&x.city===l.city&&x.category===l.category&&Number(x.price)>0);if(!peers.length)return 'Taqqoslash uchun ma’lumot yetarli emas';const avg=peers.reduce((s,x)=>s+Number(x.price),0)/peers.length;const delta=(Number(l.price)-avg)/avg*100;return delta>10?'O‘xshash e’lonlardan '+Math.round(delta)+'% qimmatroq':delta< -10?'O‘xshash e’lonlardan '+Math.abs(Math.round(delta))+'% arzonroq':'O‘xshash e’lonlar narxiga yaqin';})()}</b><p class="muted small">Bu dastlabki avtomatik taqqoslash, rasmiy baholash emas.</p></section>
         <h2>${t('detail.about')}</h2><p class="prose">${esc(l.description)}</p>
         ${l.amenities?.length ? `<h2>${t('detail.amenities')}</h2><div class="am-list">${l.amenities.map(a => `<span>${icon('check', 15)} ${esc(td('amenity', a))}</span>`).join('')}</div>` : ''}
         ${l.house_rules ? `<h2>${t('detail.rules')}</h2><p class="prose">${esc(l.house_rules)}</p>` : ''}
