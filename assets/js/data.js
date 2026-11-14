@@ -219,7 +219,7 @@ const remote = {
   },
   async uploadAvatar(file) {
     const me=await this.currentUser(); if(!me) throw new Error('auth.required');
-    const path=`${me.id}/avatar-${Date.now()}.jpg`;
+    const path=`${me.id}/avatars/avatar-${Date.now()}.jpg`;
     const up=await this.sb.storage.from(BUCKET).upload(path,file,{upsert:true,contentType:file.type||'image/jpeg'});
     if(up.error) throw new Error(up.error.message);
     const {error}=await this.sb.from('profiles').update({avatar_path:path}).eq('id',me.id);
