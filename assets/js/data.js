@@ -234,8 +234,21 @@ const remote = {
   },
   async createBooking(payload) {
     const me=await this.currentUser(); if(!me) throw new Error('auth.required');
-    const {data,error}=await this.sb.from('bookings').insert({...payload,guest_id:me.id}).select('id').single();
-    if(error) throw new Error(error.message); return data.id;
+    const {data,error}=await this.sb.rpc('request_booking',{
+      p_listing:payload.listing_id,p_name:payload.guest_name,p_phone:payload.guest_phone,
+      p_in:payload.check_in,p_out:payload.check_out,p_places:payload.places
+    });
+    if(error) throw new Error(error.message); return data;
+  },
+  async completeListing(id) {
+    const me=await this.currentUser(); if(!me) throw new Error('auth.required');
+    const {data,error}=await this.sb.from('bookings').select('id').eq('listing_id',id).eq('status','confirmed');
+    if(error) throw new Error(error.message);
+    if(!data?.length) return this.setStatus(id,'completed');
+    for(const booking of data){
+      const result=await this.sb.rpc('owner_set_booking_status',{p_booking:booking.id,p_status:'completed'});
+      if(result.error) throw new Error(result.error.message);
+    }
   },
   async _hydrate(rows) {
     const imgs = rows.flatMap(r => (r.listing_images || []));
