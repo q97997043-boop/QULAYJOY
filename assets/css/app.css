@@ -642,3 +642,8 @@ body.in-chat .footer { display: none; }
   .sn-results { grid-template-columns:1fr; max-height:280px; }
   .sn-categories button { font-size:11px; padding:6px 8px; }
 }
+
+
+/* Qo‘shimcha qidiruv filtrlari */
+.filter-photo { display:flex; align-items:center; gap:9px; padding:11px 12px; margin:12px 0; border:1px solid var(--border); border-radius:10px; background:var(--surface-2); font-size:13px; font-weight:600; }
+.filter-photo input { width:17px; height:17px; accent-color:var(--primary); }
