@@ -5,6 +5,7 @@ import { CATEGORIES, CITIES, CITY_COORDS, UZ_CENTER, LONG_STAY, listingPoint, va
 import { initStore, favs, prefs, compressImage } from './data.js';
 import * as dataMod from './data.js';
 import { listingsMap, locationPicker, distKm } from './map.js';
+import { mountSmartNearby } from './smart-location.js';
 
 const { t, td } = i18n;
 const S = () => dataMod.store; // joriy adapter
@@ -470,7 +471,7 @@ async function listing(view, r, alive) {
         ${l.amenities?.length ? `<h2>${t('detail.amenities')}</h2><div class="am-list">${l.amenities.map(a => `<span>${icon('check', 15)} ${esc(td('amenity', a))}</span>`).join('')}</div>` : ''}
         ${l.house_rules ? `<h2>${t('detail.rules')}</h2><p class="prose">${esc(l.house_rules)}</p>` : ''}
         ${l.available_from ? `<h2>${t('detail.available')}</h2><p>${l.available_to ? t('detail.fromTo', { a: i18n.date(l.available_from), b: i18n.date(l.available_to) }) : t('detail.fromOnly', { a: i18n.date(l.available_from) })}</p>` : ''}
-        ${p ? `<h2>${t('detail.location')}</h2><div class="map-shell small"><div class="map" id="dMap"></div><div class="map-panel" id="dPanel" hidden></div></div><p class="muted small">${p.approx ? t('detail.approx') + ' ' : ''}${t('detail.nearbyHint')}</p>` : ''}
+        ${p ? `<h2>${t('detail.location')}</h2><div class="map-shell small"><div class="map" id="dMap"></div><div class="map-panel" id="dPanel" hidden></div></div><div id="smartNearby"></div><p class="muted small">${p.approx ? t('detail.approx') + ' ' : ''}${t('detail.nearbyHint')}</p>` : ''}
       </div>
       <aside class="detail-side">
         <div class="price-card">
@@ -531,6 +532,9 @@ async function listing(view, r, alive) {
     };
     dApi = await listingsMap($('#dMap'), items, { maxZoom: p.approx ? 13 : 15, onSelect: dShow, view: { center: { lat: p.lat, lng: p.lng }, zoom: p.approx ? 13 : 14 } });
     dApi?.select(l.id, false);
+    const nearbyRoot = $('#smartNearby');
+    if (nearbyRoot && !p.approx) mountSmartNearby(nearbyRoot, p, dApi);
+    else if (nearbyRoot && p.approx) nearbyRoot.innerHTML = '<p class="muted small">Yaqin infratuzilmani aniq ko‘rsatish uchun e’lon egasi xaritada aniq manzil nuqtasini belgilashi kerak.</p>';
   }
 }
 function lightbox(media, start) {
