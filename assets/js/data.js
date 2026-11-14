@@ -208,12 +208,42 @@ const remote = {
   async getProfile() {
     const me = await this.currentUser(); if (!me) return null;
     const { data } = await this.sb.from('profiles').select('*').eq('id', me.id).maybeSingle();
-    return { first_name: data?.first_name || '', last_name: data?.last_name || '', phone: data?.phone || '', email: me.email, created_at: data?.created_at || me.created_at };
+    let avatar_url = '';
+    if (data?.avatar_path) { const { data: signed } = await this.sb.storage.from(BUCKET).createSignedUrl(data.avatar_path, 3600); avatar_url = signed?.signedUrl || ''; }
+    return { ...data, first_name: data?.first_name || '', last_name: data?.last_name || '', phone: data?.phone || '', email: me.email, avatar_url, created_at: data?.created_at || me.created_at };
   },
   async updateProfile(p) {
     const me = await this.currentUser();
-    const { error } = await this.sb.from('profiles').update({ first_name: p.first_name, last_name: p.last_name, phone: p.phone }).eq('id', me.id);
+    const { error } = await this.sb.from('profiles').update({ first_name:p.first_name, last_name:p.last_name, phone:p.phone, display_name:p.display_name||'', bio:p.bio||'', telegram:p.telegram||'', show_phone:!!p.show_phone }).eq('id', me.id);
     if (error) throw new Error(error.message);
+  },
+  async uploadAvatar(file) {
+    const me=await this.currentUser(); if(!me) throw new Error('auth.required');
+    const path=`${me.id}/avatars/avatar-${Date.now()}.jpg`;
+    const up=await this.sb.storage.from(BUCKET).upload(path,file,{upsert:true,contentType:file.type||'image/jpeg'});
+    if(up.error) throw new Error(up.error.message);
+    const {error}=await this.sb.from('profiles').update({avatar_path:path}).eq('id',me.id);
+    if(error) throw new Error(error.message);
+    const {data}=await this.sb.storage.from(BUCKET).createSignedUrl(path,3600); return data?.signedUrl||'';
+  },
+  async recordListingView(id) {
+    let viewer=localStorage.getItem('qj_viewer_key');
+    if(!viewer){viewer=uid().replace(/-/g,'')+uid().replace(/-/g,'');localStorage.setItem('qj_viewer_key',viewer);}
+    const {error}=await this.sb.rpc('record_listing_view',{p_listing:id,p_viewer:viewer.slice(0,64)});
+    if(error) console.warn('View counter:',error.message);
+  },
+  async createBooking(payload) {
+    const me=await this.currentUser(); if(!me) throw new Error('auth.required');
+    const {data,error}=await this.sb.rpc('request_booking',{
+      p_listing:payload.listing_id,p_name:payload.guest_name,p_phone:payload.guest_phone,
+      p_in:payload.check_in,p_out:payload.check_out,p_places:payload.places
+    });
+    if(error) throw new Error(error.message); return data;
+  },
+  async completeListing(id) {
+    const me=await this.currentUser(); if(!me) throw new Error('auth.required');
+    const {error}=await this.sb.rpc('owner_complete_listing',{p_listing:id});
+    if(error) throw new Error(error.message);
   },
   async _hydrate(rows) {
     const imgs = rows.flatMap(r => (r.listing_images || []));
@@ -229,7 +259,7 @@ const remote = {
     const { data, error } = await this.sb.from('listings').select('*, listing_images(*)').eq('status', 'active').order('created_at', { ascending: false }).limit(300);
     if (error) throw error;
     const rows = await this._hydrate(data || []);
-    return rows.length ? rows : SAMPLES;
+    return rows;
   },
   async getListing(id) {
     const s = SAMPLES.find(x => x.id === id); if (s) return s;

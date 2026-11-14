@@ -606,3 +606,39 @@ body.in-chat .footer { display: none; }
   .near-card { flex-basis: 200px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+.profile-avatar{overflow:hidden}.profile-avatar img{width:100%;height:100%;object-fit:cover}.profile-subhead{margin-top:26px}#bookedList,#completedList{display:flex;flex-direction:column;gap:10px}.my-info small{color:var(--muted);font-size:12px}.booking-modal{width:min(520px,calc(100vw - 28px))}.booking-modal form{display:flex;flex-direction:column;gap:12px}
+
+/* Xarita ustidagi yordamchi ko'rsatma oynasini yashirish */
+.map-hint { display: none !important; }
+
+/* QULAYJOY local price insight */
+.price-insight{margin:24px 0;padding:18px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface-2)}.price-insight h2{margin-top:0}
+
+
+/* Smart Location — yaqin infratuzilma */
+.smart-nearby { margin: 22px 0 18px; padding: 18px; border: 1px solid var(--border); border-radius: var(--r); background: var(--surface); }
+.sn-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:14px; }
+.sn-head h2 { font-size:19px; margin-bottom:4px; }
+.sn-source { font-size:11px; font-weight:800; letter-spacing:.06em; padding:5px 8px; border-radius:7px; color:var(--primary); background:var(--primary-50); }
+.sn-radii,.sn-categories { display:flex; flex-wrap:wrap; gap:7px; margin:12px 0; }
+.sn-radii button,.sn-categories button { min-height:34px; padding:7px 11px; border:1px solid var(--border); border-radius:9px; background:var(--surface-2); font-size:12px; font-weight:700; }
+.sn-radii button.on,.sn-categories button.on { border-color:var(--primary); color:var(--primary); background:var(--primary-50); }
+.sn-radii button:disabled { opacity:.5; cursor:wait; }
+.sn-categories button { display:inline-flex; align-items:center; gap:6px; }
+.sn-categories button span { font-size:15px; }
+.sn-status { margin:12px 0 8px; }
+.sn-results { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; max-height:340px; overflow:auto; }
+.sn-item { min-width:0; display:flex; align-items:center; gap:8px; padding:9px; border:1px solid var(--border); border-radius:10px; }
+.sn-icon { font-size:18px; }
+.sn-name { min-width:0; flex:1; display:flex; flex-direction:column; }
+.sn-name b { font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sn-name small { color:var(--muted); font-size:10px; text-transform:capitalize; }
+.sn-item strong { white-space:nowrap; font-size:11px; }
+.sn-foot { margin-top:12px; }
+.poi-pin { width:26px; height:26px; display:grid; place-items:center; border-radius:50%; background:#fff; border:2px solid var(--primary); box-shadow:0 2px 8px #0003; font-size:13px; }
+@media(max-width:600px) {
+  .smart-nearby { padding:13px; }
+  .sn-results { grid-template-columns:1fr; max-height:280px; }
+  .sn-categories button { font-size:11px; padding:6px 8px; }
+}

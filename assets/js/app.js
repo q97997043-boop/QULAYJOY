@@ -5,6 +5,7 @@ import { CATEGORIES, CITIES, CITY_COORDS, UZ_CENTER, LONG_STAY, listingPoint, va
 import { initStore, favs, prefs, compressImage } from './data.js';
 import * as dataMod from './data.js';
 import { listingsMap, locationPicker, distKm } from './map.js';
+import { mountSmartNearby } from './smart-location.js';
 
 const { t, td } = i18n;
 const S = () => dataMod.store; // joriy adapter
@@ -430,6 +431,7 @@ async function listing(view, r, alive) {
   view.innerHTML = `<div class="wrap pad">${skeletons(1)}</div>`;
   const l = await S().getListing(r.id);
   if (!alive()) return;
+  if (l && !l.sample && S().mode === 'live') await S().recordListingView(l.id).catch(() => {});
   if (!l) { setTitle(t('detail.notFound')); view.innerHTML = `<div class="wrap empty">${icon('search', 40)}<h2>${t('detail.notFound')}</h2><p class="muted">${t('detail.notFoundText')}</p><a class="btn primary" href="#">${icon('arrowLeft', 16)} ${t('detail.back')}</a></div>`; return; }
   setTitle(l.title);
   const mine = state.user && l.owner_id === state.user.id;
@@ -464,18 +466,19 @@ async function listing(view, r, alive) {
           ${l.floor != null ? `<div>${icon('building', 20)}<span>${t('detail.floor', { n: l.floor })}</span></div>` : ''}
           ${l.created_at ? `<div>${icon('calendar', 20)}<span>${t('detail.posted', { d: i18n.date(l.created_at) })}</span></div>` : ''}
         </div>
+        <section class="price-insight"><h2>QULAYJOY narx tahlili</h2><p class="muted small">Shu hudud va shu turdagi mavjud e’lonlar bilan solishtirish</p><b>${(()=>{const peers=all.filter(x=>x.id!==l.id&&x.city===l.city&&x.category===l.category&&Number(x.price)>0);if(!peers.length)return 'Taqqoslash uchun ma’lumot yetarli emas';const avg=peers.reduce((s,x)=>s+Number(x.price),0)/peers.length;const delta=(Number(l.price)-avg)/avg*100;return delta>10?'O‘xshash e’lonlardan '+Math.round(delta)+'% qimmatroq':delta< -10?'O‘xshash e’lonlardan '+Math.abs(Math.round(delta))+'% arzonroq':'O‘xshash e’lonlar narxiga yaqin';})()}</b><p class="muted small">Bu dastlabki avtomatik taqqoslash, rasmiy baholash emas.</p></section>
         <h2>${t('detail.about')}</h2><p class="prose">${esc(l.description)}</p>
         ${l.amenities?.length ? `<h2>${t('detail.amenities')}</h2><div class="am-list">${l.amenities.map(a => `<span>${icon('check', 15)} ${esc(td('amenity', a))}</span>`).join('')}</div>` : ''}
         ${l.house_rules ? `<h2>${t('detail.rules')}</h2><p class="prose">${esc(l.house_rules)}</p>` : ''}
         ${l.available_from ? `<h2>${t('detail.available')}</h2><p>${l.available_to ? t('detail.fromTo', { a: i18n.date(l.available_from), b: i18n.date(l.available_to) }) : t('detail.fromOnly', { a: i18n.date(l.available_from) })}</p>` : ''}
-        ${p ? `<h2>${t('detail.location')}</h2><div class="map-shell small"><div class="map" id="dMap"></div><div class="map-panel" id="dPanel" hidden></div></div><p class="muted small">${p.approx ? t('detail.approx') + ' ' : ''}${t('detail.nearbyHint')}</p>` : ''}
+        ${p ? `<h2>${t('detail.location')}</h2><div class="map-shell small"><div class="map" id="dMap"></div><div class="map-panel" id="dPanel" hidden></div></div><div id="smartNearby"></div><p class="muted small">${p.approx ? t('detail.approx') + ' ' : ''}${t('detail.nearbyHint')}</p>` : ''}
       </div>
       <aside class="detail-side">
         <div class="price-card">
           <p class="pc-price"><b>${money(l.price)}</b> / ${t('period.' + l.payment_period)}</p>
           <h3>${icon('chat', 18)} ${t('detail.contact')}</h3>
-          ${mine ? `<p class="notice">${t('chat.own')}</p><a class="btn outline block" href="#messages">${icon('chat', 16)} ${t('nav.msgs')}</a>`
-                 : `<button class="btn primary block big" data-chat>${icon('chat', 18)} ${t('chat.write')}</button>
+          ${mine ? `<p class="notice">${t('chat.own')}</p><p class="muted small">${icon('eye',14)} ${Number(l.views_count||0)} marta ko‘rilgan</p><a class="btn outline block" href="#messages">${icon('chat', 16)} ${t('nav.msgs')}</a>`
+                 : `<button class="btn primary block big" data-book>Joyni bron qilish</button><button class="btn outline block" data-chat>${icon('chat', 18)} ${t('chat.write')}</button>
                     <button class="btn outline block" data-paid>${icon('phone', 16)} ${t('paid.btn')} <span class="paid-tag">${money(CONTACT_PRICE)}</span></button>`}
           <p class="muted small">${t('detail.contactText')}</p>
           <p class="safety">${icon('shield', 14)} ${t('detail.safety')}</p>
@@ -484,7 +487,7 @@ async function listing(view, r, alive) {
     </div>
     ${similar.length ? `<section class="section"><h2>${t('detail.similar')}</h2><div class="grid-cards">${similar.map(x => card(x)).join('')}</div></section>` : ''}
   </div>
-  <div class="mobile-cta"><div><b>${money(l.price)}</b><small>/ ${t('period.' + l.payment_period)}</small></div>${mine ? `<a class="btn outline" href="#edit-${esc(l.id)}">${icon('edit', 16)} ${t('detail.edit')}</a>` : `<button class="icon-btn" data-paid aria-label="${t('paid.btn')}">${icon('phone', 18)}</button><button class="btn primary" data-chat>${icon('chat', 16)} ${t('chat.writeShort')}</button>`}</div>`;
+  <div class="mobile-cta"><div><b>${money(l.price)}</b><small>/ ${t('period.' + l.payment_period)}</small></div>${mine ? `<a class="btn outline" href="#edit-${esc(l.id)}">${icon('edit', 16)} ${t('detail.edit')}</a>` : `<button class="btn primary" data-book>Bron qilish</button><button class="icon-btn" data-paid aria-label="${t('paid.btn')}">${icon('phone', 18)}</button>`}</div>`;
   document.body.classList.add('has-mcta');
 
   $('#backBtn').onclick = () => (history.length > 1 ? history.back() : go(''));
@@ -500,7 +503,8 @@ async function listing(view, r, alive) {
     try { const cid = await S().startChat(l); go('chat-' + cid); }
     catch (err) { const m = err.message || ''; toast(m.includes('.') && !m.includes(' ') ? t(m) : m || t('err.generic'), 'err'); btn.disabled = false; }
   };
-  $$('[data-chat]').forEach(b => b.onclick = () => openChat(b));
+  $('[data-book]').forEach(b => b.onclick = () => openBooking(l));
+  $('[data-chat]').forEach(b => b.onclick = () => openChat(b));
   $$('[data-paid]').forEach(b => b.onclick = () => paidDialog(() => openChat(b)));
   // galereya
   const gm = $('#gMain');
@@ -528,6 +532,9 @@ async function listing(view, r, alive) {
     };
     dApi = await listingsMap($('#dMap'), items, { maxZoom: p.approx ? 13 : 15, onSelect: dShow, view: { center: { lat: p.lat, lng: p.lng }, zoom: p.approx ? 13 : 14 } });
     dApi?.select(l.id, false);
+    const nearbyRoot = $('#smartNearby');
+    if (nearbyRoot && !p.approx) mountSmartNearby(nearbyRoot, p, dApi);
+    else if (nearbyRoot && p.approx) nearbyRoot.innerHTML = '<p class="muted small">Yaqin infratuzilmani aniq ko‘rsatish uchun e’lon egasi xaritada aniq manzil nuqtasini belgilashi kerak.</p>';
   }
 }
 function lightbox(media, start) {
@@ -580,7 +587,7 @@ async function auth(view, r) {
         if (tab === 'login') { await S().signIn(fd); }
         else if (tab === 'signup') {
           const res = await S().signUp({ ...fd, phone: fd.phone ? normPhone(fd.phone) : '' });
-          if (res.confirm) { view.querySelector('.auth-card').innerHTML = `<div class="done">${icon('check', 40)}<h2>${t('auth.created')}</h2><p>${t('auth.confirm')}</p></div>`; return; }
+          if (res.confirm) { view.querySelector('.auth-card').innerHTML = `<div class="done">${icon('check', 40)}<h2>${t('auth.created')}</h2><p>${t('auth.confirm')}</p><p class="muted small">Email manzilingizni tasdiqlang. Tasdiqlash havolasini ochganingizdan so'ng profilingiz avtomatik ochiladi.</p></div>`; return; }
           toast(t('auth.created'));
         } else {
           const res = await S().resetPassword(fd.email);
@@ -726,59 +733,82 @@ async function listingForm(view, r, alive) {
 /* ------------------------------ Profil ------------------------------ */
 async function profile(view, r, alive) {
   setTitle(t('profile.title'));
-  view.innerHTML = `<div class="wrap pad">${skeletons(3)}</div>`;
-  const [p, mine] = await Promise.all([S().getProfile(), S().myListings()]);
-  if (!alive()) return;
-  const name = `${p?.first_name || ''} ${p?.last_name || ''}`.trim() || p?.email || '';
-  const initials = (name.match(/\b\p{L}/gu) || ['Q']).slice(0, 2).join('').toUpperCase();
-  const cnt = s => mine.filter(l => l.status === s).length;
-  view.innerHTML = `<div class="wrap pad">
-    <div class="prof-head">
-      <div class="avatar">${esc(initials)}</div>
-      <div class="grow"><h1>${esc(name)}</h1><p class="muted">${esc(p?.email || '')}${p?.created_at ? ' · ' + t('profile.member', { d: i18n.date(p.created_at) }) : ''}</p></div>
-      <button class="btn ghost" id="logoutBtn">${icon('logout', 16)} ${t('nav.logout')}</button>
-    </div>
-    <div class="stats"><div><b>${mine.length}</b><span>${t('profile.total')}</span></div><div><b>${cnt('active')}</b><span>${t('profile.active')}</span></div><div><b>${cnt('paused') + cnt('draft')}</b><span>${t('profile.paused')}</span></div><div><b>${favs.all().length}</b><span>${t('nav.fav')}</span></div></div>
-    <div class="prof-grid">
-      <section>
-        <div class="sec-head"><h2>${t('profile.my')}</h2><a class="btn primary sm" href="#new">${icon('plus', 15)} ${t('nav.post')}</a></div>
-        <div id="myList">${mine.length ? mine.map(l => `
-          <div class="my-item" data-id="${esc(l.id)}">
-            <a href="#listing-${esc(l.id)}" class="my-thumb">${photoBlock(l, 'my-img')}</a>
-            <div class="my-info"><a href="#listing-${esc(l.id)}"><b>${esc(l.title)}</b></a><p class="muted small">${esc(td('cat', l.category))} · ${esc(td('city', l.city))} · ${money(l.price)} / ${t('period.' + l.payment_period)}</p><span class="badge st-${esc(l.status)} inline">${t('status.' + l.status)}</span></div>
-            <div class="my-acts">
-              <a class="icon-btn" href="#edit-${esc(l.id)}" title="${t('profile.edit')}">${icon('edit', 16)}</a>
-              <button class="icon-btn" data-toggle="${l.status === 'active' ? 'paused' : 'active'}" title="${l.status === 'active' ? t('profile.pause') : t('profile.activate')}">${icon(l.status === 'active' ? 'pause' : 'play', 16)}</button>
-              <button class="icon-btn danger" data-del title="${t('profile.delete')}">${icon('trash', 16)}</button>
-            </div>
-          </div>`).join('') : `<div class="empty small-empty">${icon('home', 34)}<p>${t('profile.none')}</p><a class="btn primary" href="#new">${icon('plus', 16)} ${t('nav.post')}</a></div>`}</div>
-      </section>
-      <aside class="prof-card">
-        <h2>${t('profile.title')}</h2>
-        <form id="pf">
-          <label class="field"><span>${t('auth.first')}</span><input name="first_name" maxlength="80" value="${esc(p?.first_name || '')}"></label>
-          <label class="field"><span>${t('auth.last')}</span><input name="last_name" maxlength="80" value="${esc(p?.last_name || '')}"></label>
-          <label class="field"><span>${t('auth.phone')}</span><input name="phone" type="tel" value="${esc(p?.phone || '')}" placeholder="+998901234567"><em class="err" data-err="phone"></em></label>
-          <button class="btn primary block">${t('profile.save')}</button>
-        </form>
-      </aside>
-    </div></div>`;
-  $('#logoutBtn').onclick = async () => { await S().signOut(); state.user = null; renderShell(); go(''); };
-  $('#pf').onsubmit = async e => {
-    e.preventDefault(); const fd = Object.fromEntries(new FormData(e.target));
-    const ph = fd.phone ? normPhone(fd.phone) : '';
-    if (ph && !PHONE_RE.test(ph)) { $('[data-err=phone]', e.target).textContent = t('err.phone'); return; }
-    try { await S().updateProfile({ ...fd, phone: ph }); toast(t('ok.profile')); profile(view, r, alive); } catch (err) { toast(err.message || t('err.generic'), 'err'); }
+  view.innerHTML=`<div class="wrap pad">${skeletons(3)}</div>`;
+  const [p,mine]=await Promise.all([S().getProfile(),S().myListings()]);
+  if(!alive()) return;
+  const name=p?.display_name||`${p?.first_name||''} ${p?.last_name||''}`.trim()||p?.email||'';
+  const initials=(name.match(/\b\p{L}/gu)||['Q']).slice(0,2).join('').toUpperCase();
+  const cnt=status=>mine.filter(x=>x.status===status).length;
+  const views=mine.reduce((n,x)=>n+Number(x.views_count||0),0);
+  const renderRows=arr=>arr.map(l=>`<div class="my-item" data-id="${esc(l.id)}">
+    <a href="#listing-${esc(l.id)}" class="my-thumb">${photoBlock(l,'my-img')}</a>
+    <div class="my-info"><a href="#listing-${esc(l.id)}"><b>${esc(l.title)}</b></a>
+    <p class="muted small">${esc(td('city',l.city))} · ${money(l.price)}</p>
+    <span class="badge st-${esc(l.status)} inline">${({booked:'Bron qilingan',completed:'Bajarilgan'})[l.status] || t('status.'+l.status)}</span>
+    <small>${icon('eye',13)} ${Number(l.views_count||0)} marta ko‘rilgan</small></div>
+    <div class="my-acts">${['active','paused','draft'].includes(l.status)?`<a class="icon-btn" href="#edit-${esc(l.id)}">${icon('edit',16)}</a>`:''}
+    ${['active','paused'].includes(l.status)?`<button class="icon-btn" data-toggle="${l.status==='active'?'paused':'active'}">${icon(l.status==='active'?'pause':'play',16)}</button>`:''}
+    ${l.status==='booked'?`<button class="icon-btn" data-complete title="Bajarildi">${icon('check',16)}</button>`:''}
+    <button class="icon-btn danger" data-del>${icon('trash',16)}</button></div></div>`).join('');
+  const active=mine.filter(x=>['active','paused','draft'].includes(x.status)), booked=mine.filter(x=>x.status==='booked'), done=mine.filter(x=>x.status==='completed');
+  view.innerHTML=`<div class="wrap pad"><div class="prof-head">
+    <div class="avatar profile-avatar">${p?.avatar_url?`<img src="${esc(p.avatar_url)}" alt="Profil rasmi">`:esc(initials)}</div>
+    <div class="grow"><h1>${esc(name)}</h1><p class="muted">${esc(p?.email||'')}</p>${p?.bio?`<p class="muted">${esc(p.bio)}</p>`:''}</div>
+    <button class="btn ghost" id="logoutBtn">${icon('logout',16)} ${t('nav.logout')}</button></div>
+    <div class="stats"><div><b>${mine.length}</b><span>Jami e’lonlar</span></div><div><b>${cnt('active')}</b><span>Faol e’lonlar</span></div><div><b>${views}</b><span>Jami ko‘rishlar</span></div><div><b>${done.length}</b><span>Bajarilgan</span></div></div>
+    <div class="prof-grid"><section>
+      <div class="sec-head"><h2>Faol va boshqa e’lonlar</h2><a class="btn primary sm" href="#new">${icon('plus',15)} ${t('nav.post')}</a></div>
+      <div id="myList">${active.length?renderRows(active):'<p class="muted">Faol e’lon yo‘q.</p>'}</div>
+      <div class="sec-head profile-subhead"><h2>Bron qilingan xonalar</h2><span class="badge">${booked.length}</span></div><div id="bookedList">${booked.length?renderRows(booked):'<p class="muted">Bronlar yo‘q.</p>'}</div>
+      <div class="sec-head profile-subhead"><h2>Bajarilgan e’lonlar</h2><span class="badge">${done.length}</span></div><div id="completedList">${done.length?renderRows(done):'<p class="muted">Bajarilgan e’lonlar shu yerda ko‘rinadi.</p>'}</div>
+    </section><aside class="prof-card"><h2>Profil sozlamalari</h2><form id="pf">
+      <label class="field"><span>Profil rasmi</span><input name="avatar" type="file" accept="image/*"></label>
+      <label class="field"><span>Ko‘rinadigan ism</span><input name="display_name" maxlength="60" value="${esc(p?.display_name||'')}"></label>
+      <label class="field"><span>${t('auth.first')}</span><input name="first_name" maxlength="80" value="${esc(p?.first_name||'')}"></label>
+      <label class="field"><span>${t('auth.last')}</span><input name="last_name" maxlength="80" value="${esc(p?.last_name||'')}"></label>
+      <label class="field"><span>${t('auth.phone')}</span><input name="phone" type="tel" value="${esc(p?.phone||'')}" placeholder="+998901234567"><em class="err" data-err="phone"></em></label>
+      <label class="field"><span>Telegram username</span><input name="telegram" maxlength="40" value="${esc(p?.telegram||'')}"></label>
+      <label class="field"><span>O‘zingiz haqingizda</span><textarea name="bio" rows="3" maxlength="500">${esc(p?.bio||'')}</textarea></label>
+      <label class="am"><input type="checkbox" name="show_phone" ${p?.show_phone?'checked':''}><span>Telefon raqamimni hammaga ko‘rsatish</span></label>
+      <button class="btn primary block">Saqlash</button></form></aside></div></div>`;
+  $('#logoutBtn').onclick=async()=>{await S().signOut();state.user=null;renderShell();go('');};
+  $('#pf').onsubmit=async ev=>{
+    ev.preventDefault();const fd=new FormData(ev.target),ph=fd.get('phone')?normPhone(fd.get('phone')):'';
+    if(ph&&!PHONE_RE.test(ph)){$('[data-err=phone]',ev.target).textContent=t('err.phone');return;}
+    try{const file=fd.get('avatar');if(file?.size){if(!file.type.startsWith('image/')||file.size>5*1024*1024)throw new Error('Rasm 5 MB dan kichik bo‘lishi kerak');await S().uploadAvatar(file);}
+      await S().updateProfile({...Object.fromEntries(fd),phone:ph,show_phone:fd.get('show_phone')==='on'});toast(t('ok.profile'));profile(view,r,alive);
+    }catch(err){toast(err.message||t('err.generic'),'err');}
   };
-  $$('.my-item').forEach(it => {
-    const id = it.dataset.id;
-    $('[data-toggle]', it).onclick = async b => { await S().setStatus(id, b.currentTarget.dataset.toggle); state.listings = null; toast(t('ok.saved')); profile(view, r, alive); };
-    $('[data-del]', it).onclick = async () => { if (!(await confirmDialog(t('profile.confirmDelete')))) return; await S().deleteListing(id); state.listings = null; toast(t('ok.deleted')); profile(view, r, alive); };
+  $$('.my-item').forEach(it=>{const id=it.dataset.id;
+    $('[data-toggle]',it)?.addEventListener('click',async b=>{await S().setStatus(id,b.currentTarget.dataset.toggle);state.listings=null;profile(view,r,alive);});
+    $('[data-complete]',it)?.addEventListener('click',async()=>{await S().completeListing(id);state.listings=null;profile(view,r,alive);});
+    $('[data-del]',it)?.addEventListener('click',async()=>{if(!(await confirmDialog(t('profile.confirmDelete'))))return;await S().deleteListing(id);state.listings=null;profile(view,r,alive);});
   });
 }
-
 /* ------------------------------ Pullik raqam ------------------------------ */
 const CONTACT_PRICE = (window.QJ_CONFIG || {}).contactPrice || 5000;
+function openBooking(l) {
+  if(!state.user){state.afterLogin='listing-'+l.id;toast(t('auth.required'));return go('auth');}
+  const d=document.createElement('div');d.className='modal-back';
+  d.innerHTML=`<div class="modal booking-modal"><h3>Xonani bron qilish</h3><p class="muted small">${esc(l.title)}</p><form id="bookingForm">
+    <label class="field"><span>Ism-familiya</span><input name="guest_name" required minlength="2" maxlength="80"></label>
+    <label class="field"><span>Telefon raqam</span><input name="guest_phone" type="tel" placeholder="+998901234567" required></label>
+    <label class="field"><span>Joylar soni</span><input name="places" type="number" min="1" max="${Math.max(1,Number(l.available_places||1))}" value="1" required></label>
+    <div class="two"><label class="field"><span>Kelish sanasi</span><input name="check_in" type="date" required></label><label class="field"><span>Ketish sanasi</span><input name="check_out" type="date" required></label></div>
+    <p class="muted small">Bron tasdiqlangach e’lon avtomatik faol ro‘yxatdan olinadi.</p><p class="err-box" id="bookingErr" hidden></p>
+    <div class="modal-actions"><button type="button" class="btn ghost" data-no>Bekor qilish</button><button class="btn primary">Bronni yuborish</button></div></form></div>`;
+  document.body.appendChild(d);requestAnimationFrame(()=>d.classList.add('show'));const close=()=>d.remove();
+  d.addEventListener('click',e=>{if(e.target===d||e.target.closest('[data-no]'))close();});
+  $('#bookingForm',d).onsubmit=async e=>{e.preventDefault();const f=Object.fromEntries(new FormData(e.target)),phone=normPhone(f.guest_phone);
+    const err=$('#bookingErr',d);if(!PHONE_RE.test(phone)){err.hidden=false;err.textContent='Telefon raqamni +998 formatida kiriting.';return;}
+    if(f.check_out<=f.check_in){err.hidden=false;err.textContent='Ketish sanasi kelish sanasidan keyin bo‘lishi kerak.';return;}
+    const btn=$('button[type=submit]',e.target);btn.disabled=true;
+    try{const days=Math.max(1,Math.round((new Date(f.check_out)-new Date(f.check_in))/86400000));
+      await S().createBooking({listing_id:l.id,guest_name:f.guest_name.trim(),guest_phone:phone,places:Number(f.places),check_in:f.check_in,check_out:f.check_out,total_price:Number(l.price||0)*days*Number(f.places)});
+      close();toast('Bron yuborildi. E’lon faol ro‘yxatdan olindi.');state.listings=null;go('');
+    }catch(ex){err.hidden=false;err.textContent=ex.message||'Bron qilishda xatolik.';btn.disabled=false;}
+  };
+}
 function paidDialog(onChat) {
   const d = document.createElement('div');
   d.className = 'modal-back';
@@ -934,6 +964,12 @@ window.addEventListener('hashchange', () => { document.body.classList.remove('ha
     state.user = await S().currentUser().catch(() => null);
     renderShell();
     if (ev === 'PASSWORD_RECOVERY') go('reset');
+    // Yangi ro'yxatdan o'tgan yoki emailini tasdiqlab qaytgan foydalanuvchi profilga o'tadi.
+    else if (ev === 'SIGNED_IN' && state.user) {
+      const next = state.afterLogin || 'profile';
+      state.afterLogin = '';
+      go(next);
+    }
   });
   if (S().mode === 'demo') S().sampleReply = t('chat.sampleReply');
   renderShell();
