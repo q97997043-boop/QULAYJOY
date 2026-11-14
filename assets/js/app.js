@@ -959,8 +959,12 @@ window.addEventListener('hashchange', () => { document.body.classList.remove('ha
     state.user = await S().currentUser().catch(() => null);
     renderShell();
     if (ev === 'PASSWORD_RECOVERY') go('reset');
-    // Email tasdiqlash havolasidan qaytganda foydalanuvchini avtomatik profilga olib o'tish.
-    else if (ev === 'SIGNED_IN' && route().name === 'home' && !location.hash) go('profile');
+    // Yangi ro'yxatdan o'tgan yoki emailini tasdiqlab qaytgan foydalanuvchi profilga o'tadi.
+    else if (ev === 'SIGNED_IN' && state.user) {
+      const next = state.afterLogin || 'profile';
+      state.afterLogin = '';
+      go(next);
+    }
   });
   if (S().mode === 'demo') S().sampleReply = t('chat.sampleReply');
   renderShell();
