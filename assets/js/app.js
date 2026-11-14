@@ -485,7 +485,7 @@ async function listing(view, r, alive) {
     </div>
     ${similar.length ? `<section class="section"><h2>${t('detail.similar')}</h2><div class="grid-cards">${similar.map(x => card(x)).join('')}</div></section>` : ''}
   </div>
-  <div class="mobile-cta"><div><b>${money(l.price)}</b><small>/ ${t('period.' + l.payment_period)}</small></div>${mine ? `<a class="btn outline" href="#edit-${esc(l.id)}">${icon('edit', 16)} ${t('detail.edit')}</a>` : `<button class="icon-btn" data-paid aria-label="${t('paid.btn')}">${icon('phone', 18)}</button><button class="btn primary" data-chat>${icon('chat', 16)} ${t('chat.writeShort')}</button>`}</div>`;
+  <div class="mobile-cta"><div><b>${money(l.price)}</b><small>/ ${t('period.' + l.payment_period)}</small></div>${mine ? `<a class="btn outline" href="#edit-${esc(l.id)}">${icon('edit', 16)} ${t('detail.edit')}</a>` : `<button class="btn primary" data-book>Bron qilish</button><button class="icon-btn" data-paid aria-label="${t('paid.btn')}">${icon('phone', 18)}</button>`}</div>`;
   document.body.classList.add('has-mcta');
 
   $('#backBtn').onclick = () => (history.length > 1 ? history.back() : go(''));
@@ -739,7 +739,7 @@ async function profile(view, r, alive) {
     <a href="#listing-${esc(l.id)}" class="my-thumb">${photoBlock(l,'my-img')}</a>
     <div class="my-info"><a href="#listing-${esc(l.id)}"><b>${esc(l.title)}</b></a>
     <p class="muted small">${esc(td('city',l.city))} · ${money(l.price)}</p>
-    <span class="badge st-${esc(l.status)} inline">${t('status.'+l.status)}</span>
+    <span class="badge st-${esc(l.status)} inline">${({booked:'Bron qilingan',completed:'Bajarilgan'})[l.status] || t('status.'+l.status)}</span>
     <small>${icon('eye',13)} ${Number(l.views_count||0)} marta ko‘rilgan</small></div>
     <div class="my-acts">${['active','paused','draft'].includes(l.status)?`<a class="icon-btn" href="#edit-${esc(l.id)}">${icon('edit',16)}</a>`:''}
     ${['active','paused'].includes(l.status)?`<button class="icon-btn" data-toggle="${l.status==='active'?'paused':'active'}">${icon(l.status==='active'?'pause':'play',16)}</button>`:''}
