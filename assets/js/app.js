@@ -582,7 +582,7 @@ async function auth(view, r) {
         if (tab === 'login') { await S().signIn(fd); }
         else if (tab === 'signup') {
           const res = await S().signUp({ ...fd, phone: fd.phone ? normPhone(fd.phone) : '' });
-          if (res.confirm) { view.querySelector('.auth-card').innerHTML = `<div class="done">${icon('check', 40)}<h2>${t('auth.created')}</h2><p>${t('auth.confirm')}</p></div>`; return; }
+          if (res.confirm) { view.querySelector('.auth-card').innerHTML = `<div class="done">${icon('check', 40)}<h2>${t('auth.created')}</h2><p>${t('auth.confirm')}</p><p class="muted small">Email manzilingizni tasdiqlang. Tasdiqlash havolasini ochganingizdan so'ng profilingiz avtomatik ochiladi.</p></div>`; return; }
           toast(t('auth.created'));
         } else {
           const res = await S().resetPassword(fd.email);
@@ -959,6 +959,8 @@ window.addEventListener('hashchange', () => { document.body.classList.remove('ha
     state.user = await S().currentUser().catch(() => null);
     renderShell();
     if (ev === 'PASSWORD_RECOVERY') go('reset');
+    // Email tasdiqlash havolasidan qaytganda foydalanuvchini avtomatik profilga olib o'tish.
+    else if (ev === 'SIGNED_IN' && route().name === 'home' && !location.hash) go('profile');
   });
   if (S().mode === 'demo') S().sampleReply = t('chat.sampleReply');
   renderShell();
