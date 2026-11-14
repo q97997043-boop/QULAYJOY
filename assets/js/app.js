@@ -776,7 +776,7 @@ async function profile(view, r, alive) {
   };
   $$('.my-item').forEach(it=>{const id=it.dataset.id;
     $('[data-toggle]',it)?.addEventListener('click',async b=>{await S().setStatus(id,b.currentTarget.dataset.toggle);state.listings=null;profile(view,r,alive);});
-    $('[data-complete]',it)?.addEventListener('click',async()=>{await S().setStatus(id,'completed');state.listings=null;profile(view,r,alive);});
+    $('[data-complete]',it)?.addEventListener('click',async()=>{await S().completeListing(id);state.listings=null;profile(view,r,alive);});
     $('[data-del]',it)?.addEventListener('click',async()=>{if(!(await confirmDialog(t('profile.confirmDelete'))))return;await S().deleteListing(id);state.listings=null;profile(view,r,alive);});
   });
 }
