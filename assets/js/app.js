@@ -211,7 +211,12 @@ async function home(view, r, alive) {
         <div><h2 id="resTitle"></h2><p class="muted" id="resCount"></p></div>
         <div class="results-tools">
           <div class="seg" role="group"><button data-view="list" class="${state.view === 'list' ? 'on' : ''}">${icon('list', 16)} ${t('view.list')}</button><button data-view="map" class="${state.view === 'map' ? 'on' : ''}">${icon('map', 16)} ${t('view.map')}</button></div>
-          <select id="sortSel" class="select-sm" aria-label="sort">${['newest', 'priceAsc', 'priceDesc'].map(s => `<option value="${s}" ${(f.sort || 'newest') === s ? 'selected' : ''}>${t('sort.' + s)}</option>`).join('')}</select>
+          <select id="sortSel" class="select-sm" aria-label="Saralash">
+            <option value="newest" ${(f.sort || 'newest') === 'newest' ? 'selected' : ''}>Eng yangi</option>
+            <option value="priceAsc" ${f.sort === 'priceAsc' ? 'selected' : ''}>Arzonidan</option>
+            <option value="priceDesc" ${f.sort === 'priceDesc' ? 'selected' : ''}>Qimmatidan</option>
+            <option value="viewsDesc" ${f.sort === 'viewsDesc' ? 'selected' : ''}>Ko‘p ko‘rilgan</option>
+          </select>
           <button class="btn outline" id="filterBtn">${icon('sliders', 16)} ${t('filters.btn')}<span class="dot" id="filterDot" hidden></span></button>
         </div>
       </div>
@@ -280,11 +285,14 @@ function drawResults(keepMap = false) {
   if (f.district) chips.push(['district', f.district]);
   if (f.guests) chips.push(['guests', `${icon('users', 12)} ${f.guests}`]);
   if (f.rooms) chips.push(['rooms', `${icon('door', 12)} ${f.rooms}+`]);
+  if (f.period) chips.push(['period', ({daily:'Kunlik',weekly:'Haftalik',monthly:'Oylik'})[f.period] || f.period]);
+  if (f.places) chips.push(['places', `${f.places}+ joy`]);
+  if (f.photosOnly) chips.push(['photosOnly', 'Faqat rasmlilar']);
   if (f.date) chips.push(['date', i18n.date(f.date)]);
   if (f.end) chips.push(['end', '→ ' + i18n.date(f.end)]);
   (f.amenities || []).forEach(a => chips.push(['amenity:' + a, td('amenity', a)]));
   $('#activeChips').innerHTML = chips.map(([k, v]) => `<button class="chip" data-k="${esc(k)}">${k === 'guests' || k === 'rooms' ? v : esc(v)} ${icon('x', 12)}</button>`).join('') + (chips.length > 1 ? `<button class="chip clear" data-k="*">${t('filters.clear')}</button>` : '');
-  $('#filterDot').hidden = !(f.min || f.max || f.district || f.amenities?.length || f.rooms);
+  $('#filterDot').hidden = !(f.min || f.max || f.district || f.amenities?.length || f.rooms || f.period || f.places || f.photosOnly);
   $$('#activeChips .chip').forEach(c => c.onclick = () => {
     const k = c.dataset.k;
     if (k === '*') state.filters = { sort: f.sort };
@@ -404,8 +412,13 @@ function openFilters() {
       <div class="two"><label class="field"><span>${t('filters.min')}</span><input type="number" name="min" min="0" step="10000" value="${esc(f.min || '')}" placeholder="0"></label>
       <label class="field"><span>${t('filters.max')}</span><input type="number" name="max" min="0" step="10000" value="${esc(f.max || '')}" placeholder="∞"></label></div>
       <div class="price-quick">${[[0, 300000], [300000, 1000000], [1000000, 5000000], [5000000, 0]].map(([a, b]) => `<button type="button" class="chip" data-range="${a},${b}">${a ? shortPrice(a) : '0'} – ${b ? shortPrice(b) : '∞'}</button>`).join('')}</div>
-      <div class="two"><label class="field"><span>${t('filters.district')}</span><input name="district" value="${esc(f.district || '')}"></label>
+      <div class="two"><label class="field"><span>${t('filters.district')}</span><input name="district" value="${esc(f.district || '')}" placeholder="Masalan, Chilonzor"></label>
       <label class="field"><span>${t('filters.rooms')}</span><input type="number" name="rooms" min="1" max="20" value="${esc(f.rooms || '')}"></label></div>
+      <div class="two">
+        <label class="field"><span>Ijara muddati</span><select name="period"><option value="">Barchasi</option><option value="daily" ${f.period==='daily'?'selected':''}>Kunlik</option><option value="weekly" ${f.period==='weekly'?'selected':''}>Haftalik</option><option value="monthly" ${f.period==='monthly'?'selected':''}>Oylik</option></select></label>
+        <label class="field"><span>Bo‘sh joylar kamida</span><input type="number" name="places" min="1" max="1000" value="${esc(f.places || '')}" placeholder="1"></label>
+      </div>
+      <label class="am filter-photo"><input type="checkbox" name="photosOnly" value="1" ${f.photosOnly?'checked':''}><span>Faqat rasmlari bor e’lonlar</span></label>
       <p class="label">${t('filters.amenities')}</p>
       <div class="am-grid">${AMENITIES.map(a => `<label class="am"><input type="checkbox" name="amenities" value="${a}" ${(f.amenities || []).includes(a) ? 'checked' : ''}><span>${esc(td('amenity', a))}</span></label>`).join('')}</div>
     </div>
@@ -417,11 +430,11 @@ function openFilters() {
   const close = () => { d.classList.remove('show'); document.body.classList.remove('no-scroll'); setTimeout(() => d.remove(), 250); };
   d.addEventListener('click', e => { if (e.target === d || e.target.closest('[data-close]')) close(); });
   $$('[data-range]', d).forEach(b => b.onclick = () => { const [a, c] = b.dataset.range.split(','); $('[name=min]', d).value = +a || ''; $('[name=max]', d).value = +c || ''; });
-  $('[data-reset]', d).onclick = () => { $$('input', d).forEach(i => (i.type === 'checkbox' ? (i.checked = false) : (i.value = ''))); };
+  $('[data-reset]', d).onclick = () => { $('input', d).forEach(i => (i.type === 'checkbox' ? (i.checked = false) : (i.value = ''))); $('select', d).forEach(s => (s.value = '')); };
   $('form', d).onsubmit = e => {
     e.preventDefault();
     const fd = new FormData(e.target);
-    Object.assign(state.filters, { min: +fd.get('min') || 0, max: +fd.get('max') || 0, district: String(fd.get('district') || '').trim(), rooms: +fd.get('rooms') || 0, amenities: fd.getAll('amenities') });
+    Object.assign(state.filters, { min: +fd.get('min') || 0, max: +fd.get('max') || 0, district: String(fd.get('district') || '').trim(), rooms: +fd.get('rooms') || 0, period: fd.get('period') || '', places: +fd.get('places') || 0, photosOnly: fd.get('photosOnly') === '1', amenities: fd.getAll('amenities') });
     saveFilters(); close(); drawResults();
   };
 }
