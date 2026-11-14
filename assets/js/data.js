@@ -242,13 +242,8 @@ const remote = {
   },
   async completeListing(id) {
     const me=await this.currentUser(); if(!me) throw new Error('auth.required');
-    const {data,error}=await this.sb.from('bookings').select('id').eq('listing_id',id).eq('status','confirmed');
+    const {error}=await this.sb.rpc('owner_complete_listing',{p_listing:id});
     if(error) throw new Error(error.message);
-    if(!data?.length) return this.setStatus(id,'completed');
-    for(const booking of data){
-      const result=await this.sb.rpc('owner_set_booking_status',{p_booking:booking.id,p_status:'completed'});
-      if(result.error) throw new Error(result.error.message);
-    }
   },
   async _hydrate(rows) {
     const imgs = rows.flatMap(r => (r.listing_images || []));
