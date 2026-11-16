@@ -78,6 +78,9 @@ export function filterListings(list, f) {
     (!dist || (l.district || '').toLocaleLowerCase().includes(dist)) &&
     (!f.guests || l.available_places >= f.guests) &&
     (!f.rooms || l.rooms >= f.rooms) &&
+    (!f.places || Number(l.available_places || 0) >= f.places) &&
+    (!f.period || l.payment_period === f.period) &&
+    (!f.photosOnly || (l.media || []).some(m => m.media_type !== 'video' && m.url)) &&
     (!f.min || l.price >= f.min) &&
     (!f.max || l.price <= f.max) &&
     (!f.date || !l.available_from || l.available_from <= f.date) &&
@@ -86,6 +89,7 @@ export function filterListings(list, f) {
     (!q || `${l.title} ${l.description} ${l.district} ${l.address} ${l.city}`.toLocaleLowerCase().includes(q)));
   if (f.sort === 'priceAsc') r = [...r].sort((a, b) => a.price - b.price);
   else if (f.sort === 'priceDesc') r = [...r].sort((a, b) => b.price - a.price);
+  else if (f.sort === 'viewsDesc') r = [...r].sort((a, b) => Number(b.views_count || 0) - Number(a.views_count || 0));
   else r = [...r].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
   return r;
 }
