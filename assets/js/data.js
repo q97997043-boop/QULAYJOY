@@ -263,8 +263,12 @@ const remote = {
   },
   async getListing(id) {
     const s = SAMPLES.find(x => x.id === id); if (s) return s;
-    const { data } = await this.sb.from('listings').select('*, listing_images(*)').eq('id', id).maybeSingle();
-    return data ? (await this._hydrate([data]))[0] : null;
+    const { data, error } = await this.sb.from('listings').select('*').eq('id', id).maybeSingle();
+    if (error) throw new Error('E’lon ma’lumotini yuklab bo‘lmadi: ' + error.message);
+    if (!data) return null;
+    const { data: images, error: imageError } = await this.sb.from('listing_images').select('*').eq('listing_id', id).order('position', { ascending: true });
+    if (imageError) throw new Error('E’lon rasmlarini yuklab bo‘lmadi: ' + imageError.message);
+    return (await this._hydrate([{ ...data, listing_images: images || [] }]))[0];
   },
   async myListings() {
     const me = await this.currentUser(); if (!me) return [];
