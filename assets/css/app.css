@@ -662,3 +662,15 @@ body.in-chat .footer { display: none; }
   #detailMapWrap:not([hidden]) { display: block; }
   #detailMapWrap .map { min-height: 260px; }
 }
+
+/* QULAYJOY chat attachments and controls */
+.chat-notify { padding: 7px 10px; font-size: 12px; white-space: nowrap; }
+.chat-attach { width: 44px; height: 44px; flex: 0 0 44px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 13px; color: var(--primary); cursor: pointer; background: var(--surface-2); }
+.chat-attach:hover { background: var(--primary-50); }
+.chat-file-hint { padding: 0 16px 8px; color: var(--muted); font-size: 12px; background: var(--surface); }
+.chat-photo { display: block; max-width: min(260px, 65vw); max-height: 260px; object-fit: contain; border-radius: 10px; margin-bottom: 5px; }
+@media (max-width: 720px) {
+  .chat-notify { font-size: 11px; padding: 6px 8px; }
+  .chat-input { gap: 7px; padding: 10px; }
+  .chat-attach { width: 40px; height: 44px; flex-basis: 40px; }
+}
