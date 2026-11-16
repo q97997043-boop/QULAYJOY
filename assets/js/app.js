@@ -489,7 +489,7 @@ async function listing(view, r, alive) {
         ${l.amenities?.length ? `<h2>${t('detail.amenities')}</h2><div class="am-list">${l.amenities.map(a => `<span>${icon('check', 15)} ${esc(td('amenity', a))}</span>`).join('')}</div>` : ''}
         ${l.house_rules ? `<h2>${t('detail.rules')}</h2><p class="prose">${esc(l.house_rules)}</p>` : ''}
         ${l.available_from ? `<h2>${t('detail.available')}</h2><p>${l.available_to ? t('detail.fromTo', { a: i18n.date(l.available_from), b: i18n.date(l.available_to) }) : t('detail.fromOnly', { a: i18n.date(l.available_from) })}</p>` : ''}
-        ${p ? `<h2>${t('detail.location')}</h2><div class="map-shell small"><div class="map" id="dMap"></div><div class="map-panel" id="dPanel" hidden></div></div><div id="smartNearby"></div><p class="muted small">${p.approx ? t('detail.approx') + ' ' : ''}${t('detail.nearbyHint')}</p>` : ''}
+        ${p ? `<section class="detail-map-section"><h2>${t('detail.location')}</h2><button class="btn outline map-toggle" id="mapToggle" type="button" aria-expanded="false">Xaritani ko‘rish</button><div class="map-shell small" id="detailMapWrap" hidden><div class="map" id="dMap"></div><div class="map-panel" id="dPanel" hidden></div></div><div id="smartNearby"></div><p class="muted small">${p.approx ? t('detail.approx') + ' ' : ''}${t('detail.nearbyHint')}</p></section>` : ''}
       </div>
       <aside class="detail-side">
         <div class="price-card">
@@ -505,9 +505,18 @@ async function listing(view, r, alive) {
     </div>
     ${similar.length ? `<section class="section"><h2>${t('detail.similar')}</h2><div class="grid-cards">${similar.map(x => card(x)).join('')}</div></section>` : ''}
   </div>
-  <div class="mobile-cta"><div><b>${money(l.price)}</b><small>/ ${t('period.' + l.payment_period)}</small></div>${mine ? `<a class="btn outline" href="#edit-${esc(l.id)}">${icon('edit', 16)} ${t('detail.edit')}</a>` : `<button class="btn primary" data-book>Bron qilish</button><button class="icon-btn" data-paid aria-label="${t('paid.btn')}">${icon('phone', 18)}</button>`}</div>`;
+  <div class="mobile-cta"><div class="mobile-cta-price"><b>${money(l.price)}</b><small>/ ${t('period.' + l.payment_period)}</small></div>${mine ? `<a class="btn outline" href="#edit-${esc(l.id)}">${icon('edit', 16)} ${t('detail.edit')}</a>` : `<button class="btn primary" data-book>Bron qilish</button><button class="btn outline mobile-chat-btn" data-chat aria-label="Chatda yozish">${icon('chat', 18)} <span>Chat</span></button><button class="icon-btn mobile-phone-btn" data-paid aria-label="Telefon raqamini ko‘rish">${icon('phone', 18)}</button>`}</div>`;
   document.body.classList.add('has-mcta');
 
+  const mapToggle = $('#mapToggle');
+  if (mapToggle) mapToggle.onclick = () => {
+    const wrap = $('#detailMapWrap');
+    const opening = wrap.hidden;
+    wrap.hidden = !opening;
+    mapToggle.setAttribute('aria-expanded', String(opening));
+    mapToggle.textContent = opening ? 'Xaritani yopish' : 'Xaritani ko‘rish';
+    if (opening && !wrap.dataset.loaded) { wrap.dataset.loaded = '1'; setTimeout(() => window.dispatchEvent(new Event('resize')), 80); }
+  };
   $('#backBtn').onclick = () => (history.length > 1 ? history.back() : go(''));
   $('#shareBtn').onclick = async () => {
     const url = location.href;
