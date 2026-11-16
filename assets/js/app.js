@@ -435,7 +435,7 @@ function openFilters() {
   const close = () => { d.classList.remove('show'); document.body.classList.remove('no-scroll'); setTimeout(() => d.remove(), 250); };
   d.addEventListener('click', e => { if (e.target === d || e.target.closest('[data-close]')) close(); });
   $$('[data-range]', d).forEach(b => b.onclick = () => { const [a, c] = b.dataset.range.split(','); $('[name=min]', d).value = +a || ''; $('[name=max]', d).value = +c || ''; });
-  $('[data-reset]', d).onclick = () => { $('input', d).forEach(i => (i.type === 'checkbox' ? (i.checked = false) : (i.value = ''))); $('select', d).forEach(s => (s.value = '')); };
+  $('[data-reset]', d).onclick = () => { $$('input', d).forEach(i => (i.type === 'checkbox' ? (i.checked = false) : (i.value = ''))); $$('select', d).forEach(s => (s.value = '')); };
   $('form', d).onsubmit = e => {
     e.preventDefault();
     const fd = new FormData(e.target);
@@ -521,8 +521,8 @@ async function listing(view, r, alive) {
     try { const cid = await S().startChat(l); go('chat-' + cid); }
     catch (err) { const m = err.message || ''; toast(m.includes('.') && !m.includes(' ') ? t(m) : m || t('err.generic'), 'err'); btn.disabled = false; }
   };
-  $('[data-book]').forEach(b => b.onclick = () => openBooking(l));
-  $('[data-chat]').forEach(b => b.onclick = () => openChat(b));
+  $$('[data-book]').forEach(b => b.onclick = () => openBooking(l));
+  $$('[data-chat]').forEach(b => b.onclick = () => openChat(b));
   $$('[data-paid]').forEach(b => b.onclick = () => paidDialog(() => openChat(b)));
   // galereya
   const gm = $('#gMain');
