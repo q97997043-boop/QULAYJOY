@@ -810,7 +810,15 @@ async function profile(view, r, alive) {
       <div class="sec-head profile-subhead"><h2>Bron qilingan xonalar</h2><span class="badge">${booked.length}</span></div><div id="bookedList">${booked.length?renderRows(booked):'<p class="muted">Bronlar yo‘q.</p>'}</div>
       <div class="sec-head profile-subhead"><h2>Bajarilgan e’lonlar</h2><span class="badge">${done.length}</span></div><div id="completedList">${done.length?renderRows(done):'<p class="muted">Bajarilgan e’lonlar shu yerda ko‘rinadi.</p>'}</div>
     </section><aside class="prof-card"><h2>Profil sozlamalari</h2><form id="pf">
-      <label class="field"><span>Profil rasmi</span><input name="avatar" type="file" accept="image/*"></label>
+      <div class="profile-photo-editor">
+        <div class="profile-photo-preview" id="profilePhotoPreview">${p?.avatar_url?`<img src="${esc(p.avatar_url)}" alt="Profil rasmi">`:`<span>${esc(initials)}</span>`}</div>
+        <div class="profile-photo-actions">
+          <label class="btn outline sm" for="profileAvatarInput">${icon('image',15)} Rasm tanlash</label>
+          <input id="profileAvatarInput" name="avatar" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+          <small class="muted">JPG, PNG yoki WebP · 5 MB gacha</small>
+          ${p?.avatar_url?`<button class="btn ghost sm" id="removeAvatar" type="button">Rasmni olib tashlash</button>`:''}
+        </div>
+      </div>
       <label class="field"><span>Ko‘rinadigan ism</span><input name="display_name" maxlength="60" value="${esc(p?.display_name||'')}"></label>
       <label class="field"><span>${t('auth.first')}</span><input name="first_name" maxlength="80" value="${esc(p?.first_name||'')}"></label>
       <label class="field"><span>${t('auth.last')}</span><input name="last_name" maxlength="80" value="${esc(p?.last_name||'')}"></label>
@@ -819,6 +827,15 @@ async function profile(view, r, alive) {
       <label class="field"><span>O‘zingiz haqingizda</span><textarea name="bio" rows="3" maxlength="500">${esc(p?.bio||'')}</textarea></label>
       <label class="am"><input type="checkbox" name="show_phone" ${p?.show_phone?'checked':''}><span>Telefon raqamimni hammaga ko‘rsatish</span></label>
       <button class="btn primary block">Saqlash</button></form></aside></div></div>`;
+  const avatarInput=$('#profileAvatarInput'), avatarPreview=$('#profilePhotoPreview');
+  avatarInput?.addEventListener('change',()=>{
+    const file=avatarInput.files?.[0]; if(!file)return;
+    if(!file.type.startsWith('image/')||file.size>5*1024*1024){toast('Rasm 5 MB dan kichik bo‘lishi kerak','err');avatarInput.value='';return;}
+    const url=URL.createObjectURL(file); avatarPreview.innerHTML=`<img src="${url}" alt="Tanlangan profil rasmi">`;
+  });
+  $('#removeAvatar')?.addEventListener('click',async()=>{
+    try{if(S().clearAvatar) await S().clearAvatar(); else throw new Error('Rasmni olib tashlash hozircha mavjud emas');toast('Profil rasmi olib tashlandi');profile(view,r,alive);}catch(err){toast(err.message||t('err.generic'),'err');}
+  });
   $('#logoutBtn').onclick=async()=>{await S().signOut();state.user=null;renderShell();go('');};
   $('#pf').onsubmit=async ev=>{
     ev.preventDefault();const fd=new FormData(ev.target),ph=fd.get('phone')?normPhone(fd.get('phone')):'';
