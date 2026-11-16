@@ -221,12 +221,24 @@ const remote = {
   },
   async uploadAvatar(file) {
     const me=await this.currentUser(); if(!me) throw new Error('auth.required');
-    const path=`${me.id}/avatars/avatar-${Date.now()}.jpg`;
-    const up=await this.sb.storage.from(BUCKET).upload(path,file,{upsert:true,contentType:file.type||'image/jpeg'});
+    if(!file.type?.startsWith('image/') || file.size>5*1024*1024) throw new Error('Rasm 5 MB dan kichik bo‘lishi kerak');
+    const {data:profile}=await this.sb.from('profiles').select('avatar_path').eq('id',me.id).maybeSingle();
+    const ext=({ 'image/jpeg':'jpg','image/png':'png','image/webp':'webp' })[file.type];
+    if(!ext) throw new Error('JPG, PNG yoki WebP formatidagi rasm tanlang');
+    const path=`${me.id}/avatars/avatar-${Date.now()}.${ext}`;
+    const up=await this.sb.storage.from(BUCKET).upload(path,file,{upsert:false,contentType:file.type});
     if(up.error) throw new Error(up.error.message);
     const {error}=await this.sb.from('profiles').update({avatar_path:path}).eq('id',me.id);
-    if(error) throw new Error(error.message);
+    if(error){await this.sb.storage.from(BUCKET).remove([path]);throw new Error(error.message);}
+    if(profile?.avatar_path) await this.sb.storage.from(BUCKET).remove([profile.avatar_path]);
     const {data}=await this.sb.storage.from(BUCKET).createSignedUrl(path,3600); return data?.signedUrl||'';
+  },
+  async clearAvatar() {
+    const me=await this.currentUser(); if(!me) throw new Error('auth.required');
+    const {data:profile}=await this.sb.from('profiles').select('avatar_path').eq('id',me.id).maybeSingle();
+    const {error}=await this.sb.from('profiles').update({avatar_path:null}).eq('id',me.id);
+    if(error) throw new Error(error.message);
+    if(profile?.avatar_path) await this.sb.storage.from(BUCKET).remove([profile.avatar_path]);
   },
   async recordListingView(id) {
     let viewer=localStorage.getItem('qj_viewer_key');
