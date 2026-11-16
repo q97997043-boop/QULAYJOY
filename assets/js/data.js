@@ -309,7 +309,7 @@ const remote = {
   },
 
   /* ---- Chat (Supabase: supabase/chat.sql) ---- */
-  _chatErr(e) { if (e && /conversations|messages|does not exist|schema cache/i.test(e.message || '')) return new Error('chat.notReady'); return new Error(e?.message || 'err.generic'); },
+  _chatErr(e) { console.error('[QULAYJOY chat error]', e); return new Error(e?.message || e?.details || e?.hint || 'Chat xatoligi: tafsilot topilmadi'); },
   async _shapeChats(rows, meId) {
     const paths = rows.map(r => (r.listings?.listing_images || []).sort((a, b) => a.position - b.position)[0]?.storage_path).filter(Boolean);
     const urls = {};
