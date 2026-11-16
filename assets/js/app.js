@@ -639,10 +639,13 @@ async function listingForm(view, r, alive) {
   setTitle(ex ? t('form.editTitle') : t('form.newTitle'));
   const prof = await S().getProfile().catch(() => null);
   if (!alive()) return;
-  const v = ex || { category: 'apartment_daily', city: 'Toshkent', payment_period: 'daily', available_places: 1, total_places: 1, rooms: 1, status: 'active', amenities: [] };
-  let category = v.category;
-  let point = v.latitude != null && v.longitude != null ? { lat: +v.latitude, lng: +v.longitude } : null;
-  let photos = (ex?.media || []).filter(m => m.url).map(m => ({ id: m.id, url: m.url, storage_path: m.storage_path }));
+  const draftKey = !ex ? 'qj_listing_draft_' + state.user.id : null;
+  let savedDraft = null;
+  if (draftKey) { try { savedDraft = JSON.parse(localStorage.getItem(draftKey) || 'null'); } catch {} }
+  const v = ex || { category: 'apartment_daily', city: 'Toshkent', payment_period: 'daily', available_places: 1, total_places: 1, rooms: 1, status: 'active', amenities: [], ...(savedDraft?.fields || {}) };
+  let category = savedDraft?.category || v.category;
+  let point = savedDraft?.point || (v.latitude != null && v.longitude != null ? { lat: +v.latitude, lng: +v.longitude } : null);
+  let photos = ex ? (ex.media || []).filter(m => m.url).map(m => ({ id: m.id, url: m.url, storage_path: m.storage_path })) : (savedDraft?.photos || []).map(dataUrl => ({ dataUrl }));
   const sec = (n, title, body) => `<fieldset class="fsec"><legend><span>${n}</span>${title}</legend>${body}</fieldset>`;
   const fld = (name, label, input) => `<label class="field"><span>${label}</span>${input}<em class="err" data-err="${name}"></em></label>`;
 
@@ -689,29 +692,36 @@ async function listingForm(view, r, alive) {
 
   const form = $('#lf');
   const collect = () => { const fd = new FormData(form); const o = Object.fromEntries(fd); o.amenities = fd.getAll('amenities'); o.category = category; o.latitude = point?.lat ?? null; o.longitude = point?.lng ?? null; return o; };
+  const saveDraft = () => {
+    if (!draftKey) return;
+    try {
+      const photoData = photos.map(p => p.dataUrl || '').filter(Boolean);
+      localStorage.setItem(draftKey, JSON.stringify({ fields: collect(), category, point, photos: photoData, savedAt: Date.now() }));
+    } catch (e) { console.warn('QULAYJOY draft storage is full', e); }
+  };
   const preview = () => { const d = validateListing(collect()).data; $('#preview').innerHTML = card({ ...d, id: 'preview', media: photos.map(p => ({ url: p.dataUrl || p.url })) }, { preview: true }); $('#descCount').textContent = `${d.description.length} / 5000`; };
-  form.addEventListener('input', preview);
+  form.addEventListener('input', () => { preview(); saveDraft(); });
   $$('.cat-pick button').forEach(b => b.onclick = () => {
     category = b.dataset.cat; $$('.cat-pick button').forEach(x => x.classList.toggle('on', x === b));
-    const per = CATEGORIES.find(c => c.id === category).period; form.payment_period.value = per; preview();
+    const per = CATEGORIES.find(c => c.id === category).period; form.payment_period.value = per; preview(); saveDraft();
   });
   // xarita
   const ptLabel = () => ($('#ptLabel').textContent = point ? `${point.lat.toFixed(5)}, ${point.lng.toFixed(5)}` : '');
-  const picker = await locationPicker($('#pickMap'), { center: CITY_COORDS[v.city] || UZ_CENTER, point, onChange: p => { point = p; ptLabel(); } });
+  const picker = await locationPicker($('#pickMap'), { center: CITY_COORDS[v.city] || UZ_CENTER, point, onChange: p => { point = p; ptLabel(); saveDraft(); } });
   ptLabel();
   form.city.onchange = () => { if (!point) picker?.recenter?.(CITY_COORDS[form.city.value] || UZ_CENTER); };
   $('#locBtn').onclick = () => picker?.locate?.();
-  $('#clrPt').onclick = () => picker?.set?.(null);
+  $('#clrPt').onclick = () => { picker?.set?.(null); point = null; ptLabel(); saveDraft(); };
   // rasmlar
   const drawPhotos = () => {
     $('#photos').innerHTML = photos.map((p, i) => `<div class="ph-item${i === 0 ? ' cover' : ''}"><img src="${esc(p.dataUrl || p.url)}" alt="">${i === 0 ? `<span class="badge">★</span>` : `<button type="button" class="ph-cover" data-cover="${i}" title="cover">${icon('star', 13)}</button>`}<button type="button" class="ph-del" data-del="${i}" aria-label="delete">${icon('x', 14)}</button></div>`).join('');
     $('#drop').hidden = photos.length >= 8;
-    $$('[data-del]').forEach(b => b.onclick = () => { photos.splice(+b.dataset.del, 1); drawPhotos(); preview(); });
-    $$('[data-cover]').forEach(b => b.onclick = () => { const [p] = photos.splice(+b.dataset.cover, 1); photos.unshift(p); drawPhotos(); preview(); });
+    $$('[data-del]').forEach(b => b.onclick = () => { photos.splice(+b.dataset.del, 1); drawPhotos(); preview(); saveDraft(); });
+    $$('[data-cover]').forEach(b => b.onclick = () => { const [p] = photos.splice(+b.dataset.cover, 1); photos.unshift(p); drawPhotos(); preview(); saveDraft(); });
   };
   const addFiles = async files => {
     for (const f of [...files].filter(f => f.type.startsWith('image/')).slice(0, 8 - photos.length)) {
-      try { const c = await compressImage(f, S().mode === 'demo' ? 1024 : 1600, S().mode === 'demo' ? 0.72 : 0.82); photos.push({ blob: c.blob, dataUrl: c.dataUrl }); drawPhotos(); preview(); } catch {}
+      try { const c = await compressImage(f, S().mode === 'demo' ? 1024 : 1600, S().mode === 'demo' ? 0.72 : 0.82); photos.push({ blob: c.blob, dataUrl: c.dataUrl }); drawPhotos(); preview(); saveDraft(); } catch {}
     }
   };
   $('#fileIn').onchange = e => { addFiles(e.target.files); e.target.value = ''; };
@@ -734,7 +744,9 @@ async function listingForm(view, r, alive) {
     }
     const btn = $('#lfBtn'); btn.disabled = true; btn.classList.add('loading'); const old = btn.innerHTML; btn.textContent = t('form.saving');
     try {
+      for (const p of photos) if (!p.blob && p.dataUrl) p.blob = await (await fetch(p.dataUrl)).blob();
       const id = await S().saveListing(ex?.id, res.data, photos);
+      if (draftKey) localStorage.removeItem(draftKey);
       state.listings = null;
       toast(ex ? t('ok.saved') : t('ok.published'));
       go('listing-' + id);
