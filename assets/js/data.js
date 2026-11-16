@@ -351,11 +351,35 @@ const remote = {
     const ms = await this.sb.from('messages').select('*').eq('conversation_id', id).order('created_at', { ascending: true }).limit(500);
     return { chat, messages: (ms.data || []).map(m => ({ ...m, chat_id: m.conversation_id })), me: me.id };
   },
-  async sendMessage(id, body) {
-    const { data, error } = await this.sb.from('messages').insert({ conversation_id: id, body: body.slice(0, 2000) }).select('*').single();
-    if (error) throw this._chatErr(error);
+  async sendMessage(id, body, attachment = null) {
+    let attachment_path = null;
+    if (attachment) {
+      if (!attachment.type?.startsWith('image/')) throw new Error('Faqat rasm yuborish mumkin');
+      if (attachment.size > 5 * 1024 * 1024) throw new Error('Rasm hajmi 5 MB dan oshmasin');
+      const ext = (attachment.name?.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+      attachment_path = id + '/' + crypto.randomUUID() + '.' + ext;
+      const up = await this.sb.storage.from('chat-media').upload(attachment_path, attachment, { contentType: attachment.type, upsert: false });
+      if (up.error) throw this._chatErr(up.error);
+    }
+    const { data, error } = await this.sb.from('messages').insert({ conversation_id: id, body: (body || '').slice(0, 2000), attachment_path }).select('*').single();
+    if (error) {
+      if (attachment_path) await this.sb.storage.from('chat-media').remove([attachment_path]);
+      throw this._chatErr(error);
+    }
     return data;
   },
+  async getChatImage(path) {
+    if (!path) return null;
+    const { data, error } = await this.sb.storage.from('chat-media').createSignedUrl(path, 3600);
+    if (error) throw this._chatErr(error);
+    return data.signedUrl;
+  },
+  subscribeChat(id, onChange) {
+    return this.sb.channel('qj-chat-' + id)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: 'conversation_id=eq.' + id }, onChange)
+      .subscribe();
+  },
+  unsubscribeChat(channel) { if (channel) this.sb.removeChannel(channel); },
   async markRead(id) {
     const me = await this.currentUser(); if (!me) return;
     await this.sb.from('messages').update({ read_at: new Date().toISOString() }).eq('conversation_id', id).neq('sender_id', me.id).is('read_at', null);
