@@ -923,59 +923,91 @@ async function chat(view, r, alive) {
   view.innerHTML = `<div class="chat-page">
     <div class="chat-head">
       <a class="icon-btn" href="#messages" aria-label="${t('detail.back')}">${icon('arrowLeft', 18)}</a>
-      <div class="avatar sm">${esc((c.other_name.match(/\p{L}/u) || ['Q'])[0].toUpperCase())}</div>
+      <div class="avatar sm">${esc((c.other_name.match(/\\p{L}/u) || ['Q'])[0].toUpperCase())}</div>
       <div class="grow"><b>${esc(c.other_name)}</b><small class="muted">${c.role === 'owner' ? t('chat.client') : t('chat.owner')}</small></div>
+      <button class="btn outline chat-notify" id="chatNotify" type="button">Bildirishnomani yoqish</button>
     </div>
     <a class="chat-listing" href="#listing-${esc(c.listing.id)}">${chatThumb(c.listing)}<div><b>${esc(c.listing.title)}</b><span>${money(c.listing.price)} / ${t('period.' + c.listing.payment_period)}</span></div>${icon('chevronRight', 18)}</a>
     <div class="chat-body" id="chatBody"></div>
     <div class="chat-quick" id="chatQuick"></div>
-    <form class="chat-input" id="chatForm"><textarea id="chatText" rows="1" maxlength="2000" placeholder="${t('chat.ph')}" aria-label="${t('chat.ph')}"></textarea><button class="btn primary send" aria-label="${t('chat.send')}">${icon('send', 18)}</button></form>
+    <form class="chat-input" id="chatForm">
+      <label class="chat-attach" for="chatFile" title="Rasm biriktirish">${icon('image', 20)}<input id="chatFile" type="file" accept="image/jpeg,image/png,image/webp" hidden></label>
+      <textarea id="chatText" rows="1" maxlength="2000" placeholder="${t('chat.ph')}" aria-label="${t('chat.ph')}"></textarea>
+      <button class="btn primary send" aria-label="${t('chat.send')}">${icon('send', 18)}</button>
+    </form>
+    <div class="chat-file-hint" id="chatFileHint"></div>
   </div>`;
-  let msgs = data.messages, sig = '';
-  const draw = (force) => {
-    const ns = msgs.map(m => m.id + (m.read_at ? 'r' : '')).join();
+  let msgs = data.messages, sig = '', channel = null, selectedFile = null;
+  const hydrate = async rows => Promise.all(rows.map(async m => {
+    if (!m.attachment_path || !S().getChatImage) return m;
+    try { return { ...m, attachment_url: await S().getChatImage(m.attachment_path) }; } catch { return m; }
+  }));
+  const draw = async (force) => {
+    const ns = msgs.map(m => m.id + (m.read_at ? 'r' : '') + (m.attachment_path || '')).join();
     if (!force && ns === sig) return; sig = ns;
     const body = $('#chatBody'); if (!body) return;
     const atBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 80;
+    const rows = await hydrate(msgs);
+    if (!alive() || !$('#chatBody')) return;
     let lastDay = '';
-    body.innerHTML = `<p class="chat-safety">${icon('shield', 14)} ${t('chat.safety')}</p>` + (msgs.length ? msgs.map(m => {
+    body.innerHTML = `<p class="chat-safety">${icon('shield', 14)} ${t('chat.safety')}</p>` + (rows.length ? rows.map(m => {
       const day = new Date(m.created_at).toDateString();
       const sep = day !== lastDay ? `<div class="day-sep"><span>${day === new Date().toDateString() ? t('chat.today') : i18n.date(m.created_at)}</span></div>` : '';
       lastDay = day;
       const mineMsg = m.sender_id === me;
-      return `${sep}<div class="bubble ${mineMsg ? 'me' : 'them'}"><p>${esc(m.body)}</p><time>${new Date(m.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}${mineMsg ? ` ${m.read_at ? '✓✓' : '✓'}` : ''}</time></div>`;
+      const photo = m.attachment_url ? `<a href="${esc(m.attachment_url)}" target="_blank" rel="noopener"><img class="chat-photo" src="${esc(m.attachment_url)}" alt="Chat rasmi" loading="lazy"></a>` : '';
+      return `${sep}<div class="bubble ${mineMsg ? 'me' : 'them'}">${photo}${m.body ? `<p>${esc(m.body)}</p>` : ''}<time>${new Date(m.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}${mineMsg ? ` ${m.read_at ? '✓✓' : '✓'}` : ''}</time></div>`;
     }).join('') : `<p class="chat-empty">${t('chat.empty')}</p>`);
     if (atBottom || force) body.scrollTop = body.scrollHeight;
     $('#chatQuick').innerHTML = msgs.length || c.role === 'owner' ? '' : ['chat.quick1', 'chat.quick2', 'chat.quick3'].map(k => `<button class="chip" type="button">${t(k)}</button>`).join('');
     $$('#chatQuick .chip').forEach(b => b.onclick = () => { $('#chatText').value = b.textContent; $('#chatForm').requestSubmit(); });
   };
-  draw(true);
+  await draw(true);
   S().markRead(r.id).then(refreshUnread);
   const ta = $('#chatText');
   const grow = () => { ta.style.height = 'auto'; ta.style.height = Math.min(140, ta.scrollHeight) + 'px'; };
+  $('#chatFile').onchange = e => {
+    selectedFile = e.target.files?.[0] || null;
+    if (selectedFile && selectedFile.size > 5 * 1024 * 1024) { toast('Rasm hajmi 5 MB dan oshmasin', 'err'); selectedFile = null; e.target.value = ''; }
+    $('#chatFileHint').textContent = selectedFile ? 'Biriktirildi: ' + selectedFile.name : '';
+  };
+  $('#chatNotify').onclick = async () => {
+    if (!('Notification' in window)) { toast('Bu brauzer bildirishnomalarni qo‘llamaydi', 'err'); return; }
+    const permission = await Notification.requestPermission();
+    toast(permission === 'granted' ? 'Bildirishnomalar yoqildi' : 'Bildirishnomaga ruxsat berilmadi', permission === 'granted' ? 'ok' : 'err');
+    if (permission === 'granted') $('#chatNotify').textContent = 'Bildirishnoma yoqilgan';
+  };
   ta.addEventListener('input', grow);
   ta.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && matchMedia('(hover: hover)').matches) { e.preventDefault(); $('#chatForm').requestSubmit(); } });
   $('#chatForm').onsubmit = async e => {
     e.preventDefault();
-    const body = ta.value.trim(); if (!body) return;
-    ta.value = ''; grow();
+    const body = ta.value.trim(), file = selectedFile;
+    if (!body && !file) return;
+    ta.value = ''; selectedFile = null; $('#chatFile').value = ''; $('#chatFileHint').textContent = ''; grow();
     const tmp = { id: 'tmp' + Date.now(), sender_id: me, body, created_at: new Date().toISOString(), read_at: null };
-    msgs = [...msgs, tmp]; draw(true);
-    try { await S().sendMessage(r.id, body); } catch (err) { msgs = msgs.filter(m => m !== tmp); draw(true); ta.value = body; toast(t(err.message) || t('err.generic'), 'err'); return; }
+    msgs = [...msgs, tmp]; await draw(true);
+    try { await S().sendMessage(r.id, body, file); } catch (err) { msgs = msgs.filter(m => m !== tmp); await draw(true); ta.value = body; selectedFile = file; toast(err.message || t('err.generic'), 'err'); return; }
     poll();
   };
   const poll = async () => {
     if (route().name !== 'chat') return stopChatPoll();
     const d = await S().getChat(r.id).catch(() => null);
     if (!d || route().id !== r.id) return;
-    msgs = d.messages; draw();
+    const before = new Set(msgs.map(m => m.id));
+    msgs = d.messages;
+    const incoming = msgs.find(m => !before.has(m.id) && m.sender_id !== me);
+    await draw();
+    if (incoming && document.hidden && 'Notification' in window && Notification.permission === 'granted') new Notification(c.other_name, { body: incoming.body || 'Sizga rasm yuborildi' });
     if (msgs.some(m => m.sender_id !== me && !m.read_at)) S().markRead(r.id).then(refreshUnread);
   };
   stopChatPoll();
-  chatTimer = setInterval(poll, 3000);
+  if (S().subscribeChat) channel = S().subscribeChat(r.id, () => poll());
+  chatTimer = setInterval(poll, channel ? 15000 : 3000);
   if (matchMedia('(hover: hover)').matches) ta.focus();
+  const cleanup = () => { if (channel && S().unsubscribeChat) S().unsubscribeChat(channel); };
+  const prevStop = stopChatPoll;
+  stopChatPoll = () => { cleanup(); prevStop(); };
 }
-
 /* ------------------------------ Saqlanganlar ------------------------------ */
 async function favorites(view, r, alive) {
   setTitle(t('fav.title'));
