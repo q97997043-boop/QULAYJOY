@@ -875,8 +875,8 @@ function paidDialog(onChat) {
 }
 
 /* ------------------------------ Xabarlar (chat) ------------------------------ */
-let chatTimer = null, unreadTimer = null;
-function stopChatPoll() { clearInterval(chatTimer); chatTimer = null; }
+let chatTimer = null, unreadTimer = null, chatChannel = null;
+function stopChatPoll() { clearInterval(chatTimer); chatTimer = null; if (chatChannel && S().unsubscribeChat) S().unsubscribeChat(chatChannel); chatChannel = null; }
 async function refreshUnread() {
   if (!state.user) return $$('[data-unread]').forEach(b => (b.hidden = true));
   const n = await S().unreadCount().catch(() => 0);
@@ -937,7 +937,7 @@ async function chat(view, r, alive) {
     </form>
     <div class="chat-file-hint" id="chatFileHint"></div>
   </div>`;
-  let msgs = data.messages, sig = '', channel = null, selectedFile = null;
+  let msgs = data.messages, sig = '', selectedFile = null;
   const hydrate = async rows => Promise.all(rows.map(async m => {
     if (!m.attachment_path || !S().getChatImage) return m;
     try { return { ...m, attachment_url: await S().getChatImage(m.attachment_path) }; } catch { return m; }
@@ -1001,12 +1001,9 @@ async function chat(view, r, alive) {
     if (msgs.some(m => m.sender_id !== me && !m.read_at)) S().markRead(r.id).then(refreshUnread);
   };
   stopChatPoll();
-  if (S().subscribeChat) channel = S().subscribeChat(r.id, () => poll());
-  chatTimer = setInterval(poll, channel ? 15000 : 3000);
+  if (S().subscribeChat) chatChannel = S().subscribeChat(r.id, () => poll());
+  chatTimer = setInterval(poll, chatChannel ? 15000 : 3000);
   if (matchMedia('(hover: hover)').matches) ta.focus();
-  const cleanup = () => { if (channel && S().unsubscribeChat) S().unsubscribeChat(channel); };
-  const prevStop = stopChatPoll;
-  stopChatPoll = () => { cleanup(); prevStop(); };
 }
 /* ------------------------------ Saqlanganlar ------------------------------ */
 async function favorites(view, r, alive) {
