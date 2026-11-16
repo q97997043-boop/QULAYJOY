@@ -545,11 +545,20 @@ async function listing(view, r, alive) {
       $$('[data-mp]', panel).forEach(b => b.onclick = () => { const a = b.dataset.mp; if (a === 'close') { panel.hidden = true; dApi?.select(l.id, false); return; } const n = others[idx + (a === 'next' ? 1 : -1)]; if (n) dShow(n.l.id); });
       dApi?.select(id, true);
     };
-    dApi = await listingsMap($('#dMap'), items, { maxZoom: p.approx ? 13 : 15, onSelect: dShow, view: { center: { lat: p.lat, lng: p.lng }, zoom: p.approx ? 13 : 14 } });
-    dApi?.select(l.id, false);
+    // Xarita ixtiyoriy: xarita kutubxonasi yoki tashqi xarita xizmati ishlamasa ham e’lon sahifasi ochilishi kerak.
+    try {
+      dApi = await listingsMap($('#dMap'), items, { maxZoom: p.approx ? 13 : 15, onSelect: dShow, view: { center: { lat: p.lat, lng: p.lng }, zoom: p.approx ? 13 : 14 } });
+      dApi?.select(l.id, false);
+    } catch (mapError) {
+      console.warn('QULAYJOY listing map unavailable:', mapError);
+      const mapRoot = $('#dMap');
+      if (mapRoot) mapRoot.innerHTML = '<p class="muted small">Xarita hozircha yuklanmadi. E’lon ma’lumotlari mavjud.</p>';
+    }
     const nearbyRoot = $('#smartNearby');
-    if (nearbyRoot && !p.approx) mountSmartNearby(nearbyRoot, p, dApi);
-    else if (nearbyRoot && p.approx) nearbyRoot.innerHTML = '<p class="muted small">Yaqin infratuzilmani aniq ko‘rsatish uchun e’lon egasi xaritada aniq manzil nuqtasini belgilashi kerak.</p>';
+    if (nearbyRoot && !p.approx) {
+      try { mountSmartNearby(nearbyRoot, p, dApi); }
+      catch (nearbyError) { console.warn('QULAYJOY nearby services unavailable:', nearbyError); }
+    } else if (nearbyRoot && p.approx) nearbyRoot.innerHTML = '<p class="muted small">Yaqin infratuzilmani aniq ko‘rsatish uchun e’lon egasi xaritada aniq manzil nuqtasini belgilashi kerak.</p>';
   }
 }
 function lightbox(media, start) {
