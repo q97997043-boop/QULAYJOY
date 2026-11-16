@@ -940,7 +940,7 @@ async function chat(view, r, alive) {
   view.innerHTML = `<div class="chat-page">
     <div class="chat-head">
       <a class="icon-btn" href="#messages" aria-label="${t('detail.back')}">${icon('arrowLeft', 18)}</a>
-      <div class="avatar sm">${esc((c.other_name.match(/\\p{L}/u) || ['Q'])[0].toUpperCase())}</div>
+      <div class="avatar sm">${esc((c.other_name || 'Q').trim().charAt(0).toUpperCase() || 'Q')}</div>
       <div class="grow"><b>${esc(c.other_name)}</b><small class="muted">${c.role === 'owner' ? t('chat.client') : t('chat.owner')}</small></div>
       <button class="btn outline chat-notify" id="chatNotify" type="button">Bildirishnomani yoqish</button>
     </div>
