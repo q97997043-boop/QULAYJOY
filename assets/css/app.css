@@ -647,3 +647,18 @@ body.in-chat .footer { display: none; }
 /* Qo‘shimcha qidiruv filtrlari */
 .filter-photo { display:flex; align-items:center; gap:9px; padding:11px 12px; margin:12px 0; border:1px solid var(--border); border-radius:10px; background:var(--surface-2); font-size:13px; font-weight:600; }
 .filter-photo input { width:17px; height:17px; accent-color:var(--primary); }
+
+
+/* QULAYJOY mobile listing actions and collapsible map */
+@media (max-width: 720px) {
+  .mobile-cta { justify-content: flex-start; gap: 8px; }
+  .mobile-cta-price { min-width: 0; flex: 1 1 auto; }
+  .mobile-cta > .btn { min-height: 44px; padding: 0 12px; white-space: nowrap; }
+  .mobile-chat-btn { display: inline-flex; align-items: center; gap: 6px; }
+  .mobile-phone-btn { flex: 0 0 44px; margin-left: 0 !important; }
+  .detail-map-section { margin-top: 22px; }
+  .detail-map-section .map-toggle { width: 100%; justify-content: center; min-height: 44px; margin: 8px 0 12px; }
+  #detailMapWrap[hidden] { display: none !important; }
+  #detailMapWrap:not([hidden]) { display: block; }
+  #detailMapWrap .map { min-height: 260px; }
+}
