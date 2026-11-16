@@ -162,8 +162,11 @@ async function render() {
     if (['new', 'profile', 'messages', 'chat'].includes(r.name) && !state.user) { state.afterLogin = location.hash.slice(1); return go('auth'); }
     await views[r.name](view, r, () => seq === renderSeq);
   } catch (e) {
-    console.error(e);
-    if (seq === renderSeq) view.innerHTML = `<div class="wrap empty"><h2>${t('err.generic')}</h2><a class="btn primary" href="#">${t('nav.home')}</a></div>`;
+    console.error('[QULAYJOY route error]', r.name, r.id || '', e);
+    if (seq === renderSeq) {
+      const detail = String(e?.message || e || 'Unknown error').slice(0, 500);
+      view.innerHTML = `<div class="wrap empty"><h2>${t('err.generic')}</h2><p class="muted small">Texnik sabab: ${esc(detail)}</p><a class="btn primary" href="#">${t('nav.home')}</a></div>`;
+    }
   }
   if (r.name !== 'home' || !r.results) window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
 }
