@@ -139,6 +139,8 @@ const scrollToResults = () => setTimeout(() => $('#results')?.scrollIntoView({ b
 /* ------------------------------ Router ------------------------------ */
 function route() {
   const h = decodeURIComponent(location.hash.replace(/^#/, ''));
+  // Supabase password recovery redirects with access_token and type=recovery in the URL hash.
+  if (h.includes('type=recovery') || h.includes('type%3Drecovery')) return { name: 'reset' };
   if (!h || h.includes('access_token') || h.includes('error=')) return { name: 'home' };
   if (h.startsWith('listing-')) return { name: 'listing', id: h.slice(8) };
   if (h.startsWith('edit-')) return { name: 'new', id: h.slice(5) };
