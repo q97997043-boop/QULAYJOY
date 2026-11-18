@@ -409,10 +409,22 @@ const remote = {
 export let store = local;
 export async function initStore() {
   const forceDemo = /[?&]demo=1/.test(location.search);
-  if (!forceDemo && CFG.supabaseUrl && CFG.supabaseKey) {
-    try { await remote.init(); store = remote; return store; } catch (e) { console.warn('[QULAYJOY] Supabase ulanmadi, demo rejim:', e?.message || e); }
+  const isProduction = location.hostname === 'qulayjoy.vercel.app';
+  if (forceDemo) {
+    if (isProduction) throw new Error('Production saytda demo rejim o‘chirilgan. Demo ma’lumotlar haqiqiy e’lon sifatida saqlanmaydi.');
+    store = local; await local.init(); return store;
   }
-  store = local; await local.init(); return store;
+  if (!CFG.supabaseUrl || !CFG.supabaseKey) {
+    if (isProduction) throw new Error('Supabase sozlamalari topilmadi. E’lonlar saqlanishi uchun server sozlamalarini tekshirish kerak.');
+    store = local; await local.init(); return store;
+  }
+  try {
+    await remote.init(); store = remote; return store;
+  } catch (e) {
+    console.error('[QULAYJOY] Supabase ulanishi muvaffaqiyatsiz:', e);
+    if (isProduction) throw new Error('Asosiy ma’lumotlar bazasiga ulanib bo‘lmadi. Internetni tekshirib, sahifani qayta yuklang. Tafsilot: ' + (e?.message || 'Ulanish xatosi'));
+    store = local; await local.init(); return store;
+  }
 }
 
 /* ---------- Saqlanganlar (har doim lokal) ---------- */
