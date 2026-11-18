@@ -63,7 +63,9 @@ export function validateListing(raw) {
   if (data.description.length < 20 || data.description.length > 5000) e.description = 'err.description';
   if (!CATEGORIES.some(c => c.id === data.category)) e.category = 'err.generic';
   if (data.city.length < 2) e.city = 'err.generic';
-  if (!Number.isFinite(data.price) || data.price < 0 || data.price > 1e11) e.price = 'err.price';
+  if (data.district.length < 2) e.district = 'err.generic';
+  if (data.address.length < 5) e.address = 'err.generic';
+  if (!Number.isFinite(data.price) || data.price <= 0 || data.price > 1e11) e.price = 'err.price';
   if (data.available_places > data.total_places || data.available_places < 1) e.available_places = 'err.places';
   if (data.available_from && data.available_to && data.available_to < data.available_from) e.available_to = 'err.dates';
   return { ok: !Object.keys(e).length, data, errors: e };
