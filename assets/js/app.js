@@ -681,8 +681,8 @@ async function listingForm(view, r, alive) {
           ${fld('description', t('form.description'), `<textarea name="description" rows="5" maxlength="5000" placeholder="${t('form.descPh')}" required>${esc(v.description || '')}</textarea><small class="counter" id="descCount"></small>`)}`)}
         ${sec(2, t('form.s2'), `
           <div class="two">${fld('city', t('form.city'), `<select name="city">${CITIES.map(c => `<option value="${esc(c)}" ${v.city === c ? 'selected' : ''}>${esc(td('city', c))}</option>`).join('')}</select>`)}
-          ${fld('district', t('form.district'), `<input name="district" maxlength="100" value="${esc(v.district || '')}">`)}</div>
-          ${fld('address', t('form.address'), `<input name="address" maxlength="250" value="${esc(v.address || '')}">`)}
+          ${fld('district', t('form.district') + ' *', `<input name="district" maxlength="100" value="${esc(v.district || '')}" required>`)}</div>
+          ${fld('address', t('form.address') + ' *', `<input name="address" maxlength="250" value="${esc(v.address || '')}" required>`)}
           <p class="label">${t('form.pickMap')}</p>
           <div class="map picker" id="pickMap"></div>
           <div class="row-gap small-gap"><button type="button" class="btn outline sm" id="locBtn">${icon('locate', 15)} ${t('form.myLoc')}</button><button type="button" class="btn ghost sm" id="clrPt">${icon('x', 15)} ${t('form.clearPoint')}</button><span class="muted small" id="ptLabel"></span></div>`)}
@@ -696,7 +696,7 @@ async function listingForm(view, r, alive) {
           ${fld('available_from', t('form.from'), `<input name="available_from" type="date" value="${esc(v.available_from || '')}">`)}
           ${fld('available_to', t('form.to'), `<input name="available_to" type="date" value="${esc(v.available_to || '')}">`)}</div>`)}
         ${sec(4, t('form.s4'), `
-          <div class="photos" id="photos"></div>
+          <div class="photos" id="photos"></div><em class="err" data-err="photos"></em>
           <label class="drop" id="drop">${icon('image', 26)}<b>${t('form.addPhotos')}</b><small>${t('form.photosHint')}</small><input type="file" accept="image/*" multiple id="fileIn" hidden></label>`)}
         ${sec(5, t('form.s5'), `
           <p class="label">${t('form.amenities')}</p>
@@ -757,7 +757,9 @@ async function listingForm(view, r, alive) {
     $$('.err', form).forEach(x => (x.textContent = '')); $$('.invalid', form).forEach(x => x.classList.remove('invalid'));
     const res = validateListing(collect());
     const errBox = $('#lfErr'); errBox.hidden = true;
-    if (!res.ok) {
+    if (!res.ok || photos.length === 0 || !point) {
+      if (!photos.length) { const pe = $('[data-err=photos]', form); if (pe) pe.textContent = 'Kamida 1 ta rasm yuklash majburiy'; }
+      if (!point) { const pe = $('#ptLabel'); if (pe) pe.textContent = 'Xaritadan joylashuvni belgilang (majburiy)'; $('#pickMap')?.scrollIntoView({behavior:'smooth',block:'center'}); }
       Object.entries(res.errors).forEach(([k, m]) => { const el = $(`[data-err=${k}]`, form); if (el) { el.textContent = t(m); el.previousElementSibling?.classList?.add('invalid'); } });
       errBox.hidden = false; errBox.textContent = t('err.form');
       $('.err:not(:empty)', form)?.closest('.field')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
