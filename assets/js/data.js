@@ -250,7 +250,8 @@ const remote = {
     const me=await this.currentUser(); if(!me) throw new Error('auth.required');
     const {data,error}=await this.sb.rpc('request_booking',{
       p_listing:payload.listing_id,p_name:payload.guest_name,p_phone:payload.guest_phone,
-      p_in:payload.check_in,p_out:payload.check_out,p_places:payload.places
+      p_in:payload.check_in,p_out:payload.check_out,p_places:payload.places,
+      p_payment_method:payload.payment_method || 'cash'
     });
     if(error) throw new Error(error.message); return data;
   },
