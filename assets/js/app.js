@@ -862,6 +862,11 @@ function openBooking(l) {
     <label class="field"><span>Telefon raqam</span><input name="guest_phone" type="tel" placeholder="+998901234567" required></label>
     <label class="field"><span>Joylar soni</span><input name="places" type="number" min="1" max="${Math.max(1,Number(l.available_places||1))}" value="1" required></label>
     <div class="two"><label class="field"><span>Kelish sanasi</span><input name="check_in" type="date" required></label><label class="field"><span>Ketish sanasi</span><input name="check_out" type="date" required></label></div>
+    <fieldset class="field booking-payment"><legend>To‘lov usuli</legend>
+      <label><input type="radio" name="payment_method" value="cash" checked> Naqd pul</label>
+      <label><input type="radio" name="payment_method" value="card"> Karta orqali</label>
+      <small class="muted">To‘lov joy egasi bilan bevosita amalga oshiriladi. Sayt hozircha pul yechmaydi.</small>
+    </fieldset>
     <p class="muted small">Bron tasdiqlangach e’lon avtomatik faol ro‘yxatdan olinadi.</p><p class="err-box" id="bookingErr" hidden></p>
     <div class="modal-actions"><button type="button" class="btn ghost" data-no>Bekor qilish</button><button class="btn primary">Bronni yuborish</button></div></form></div>`;
   document.body.appendChild(d);requestAnimationFrame(()=>d.classList.add('show'));const close=()=>d.remove();
@@ -871,7 +876,7 @@ function openBooking(l) {
     if(f.check_out<=f.check_in){err.hidden=false;err.textContent='Ketish sanasi kelish sanasidan keyin bo‘lishi kerak.';return;}
     const btn=$('button[type=submit]',e.target);btn.disabled=true;
     try{const days=Math.max(1,Math.round((new Date(f.check_out)-new Date(f.check_in))/86400000));
-      await S().createBooking({listing_id:l.id,guest_name:f.guest_name.trim(),guest_phone:phone,places:Number(f.places),check_in:f.check_in,check_out:f.check_out,total_price:Number(l.price||0)*days*Number(f.places)});
+      await S().createBooking({listing_id:l.id,guest_name:f.guest_name.trim(),guest_phone:phone,places:Number(f.places),check_in:f.check_in,check_out:f.check_out,payment_method:f.payment_method,total_price:Number(l.price||0)*days*Number(f.places)});
       close();toast('Bron yuborildi. E’lon faol ro‘yxatdan olindi.');state.listings=null;go('');
     }catch(ex){err.hidden=false;err.textContent=ex.message||'Bron qilishda xatolik.';btn.disabled=false;}
   };
